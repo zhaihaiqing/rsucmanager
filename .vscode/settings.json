@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "rsuc_timer.h": "c",
+        "storage.h": "c",
+        "rsucmanager.h": "c"
+    }
+}
