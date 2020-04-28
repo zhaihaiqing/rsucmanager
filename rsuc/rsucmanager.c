@@ -1,10 +1,4 @@
-﻿#include "rtthread.h"
-#include "common.h"
-#include "rsucmanager.h"
-#include "rsuc_pro.h"
-#include "downstream.h"
-#include "rsuc_timer.h"
-#include "storage.h"
+﻿#include "rsucmanager.h"
 
 #define LOG_TAG     "MB_CPNAME"    
 #define LOG_LVL     LOG_LVL_DBG
@@ -24,51 +18,101 @@ unsigned char thread_register_stack[THREAD_STACK_SIZE];
 
 DL_FUNCS_STRU funcs;
 
-/*
-RSUC业务进程，在该进程中完成主要业务功能
-*/
+uint8_t is_eq_table_presence=0;
+uint8_t is_in_table_presence=0;
+
+struct rt_semaphore sem_rsuc;
+RESP_STRU rsuc_resp_data;
+rsuc_output_dat_type rsuc_output_dat;
+
+
+/********************************************************************
+*
+*   RSUC线程，在该进程中完成主要业务功能
+*
+********************************************************************/
+struct rt_messagequeue rsuc_inside_dat_mq;      //定义主线程与数据处理函数的消息队列
+rt_uint8_t rsuc_inside_dat_mq_pool[256];
+
+struct rt_semaphore sem_rsuc_sample_pro;    //rsuc采样务处理信号量,主任务与采样任务确认信号量
+
 void RSUC_msg_pro_entry(void *p) //CPNAME组件消息处理进程
 {
- GMS_STRU tmp_gms;
+    DM_GMS_STRU rsuc_dat_dmgms;//主管道多维消息,发送数据用
+    GMS_STRU rsuc_gms;
+    uint8_t i=0;
 
-//进行相关任务建立
+    rsuc_inside_dat_type rsuc_msg_buf={0};
+    rt_thread_mdelay(50);
 
- {
-  
- }
+    //初始化硬件、进行相关任务建立
+    LOG_D("msg pro thread start");
+    LOG_D("Hello world,this is a test info!");
 
-     testprintf();testprintf();testprintf();
-     testprintf();testprintf();testprintf();
-     LOG_D("msg pro thread start");
-     LOG_D("this is a test info! Hello world");
-     LOG_D("this is a test info! Hello world");
-     LOG_D("this is a test info! Hello world");
-     LOG_D("this is a test info! Hello world");
+    //硬件初始化
+    rsuc_GPIO_init();               //初始化GPIO
+    down_usart_init();              //初始化串口
+    timer_sample();                 //初始化软件定时器
 
-pin_led1_init();
-//初始化串口
+    is_eq_table_presence=Check_eq_CFG();     //检查设备表，正常=1，异常=0；
+    is_in_table_presence=Check_in_CFG();     //检查指令表，正常=1，异常=0；
 
-down_usart_init();
-timer_sample();
+    rt_mq_init(&rsuc_inside_dat_mq,                 /* 创建消息队列，组件消息接收线程与任务处理线程通信 */
+                "rsuc_inside_dat_mq",
+                &rsuc_inside_dat_mq_pool,           /* 内存池指向 msg_pool */
+                66,                                /* 每个消息的大小是 64 字节 */
+                sizeof(rsuc_inside_dat_mq_pool),    /* 内存池的大小是 msg_pool 的大小 */
+                RT_IPC_FLAG_FIFO);                  /* 如果有多个线程等待，按照先来先得到的方法分配消息 */
 
-RSUC_Eq_manag_writeread2();
+    while(1)
+    {
+        if(rt_mq_recv(&rsuc_pipe,&rsuc_gms,sizeof(GMS_STRU),RT_WAITING_FOREVER)==RT_EOK) //从cpname_pipe获取消息，等待模式
+        {
+            LOG_D("msg recved");
 
- while(1)
- {
-  // if(rt_mq_recv(&rsuc_pipe,&tmp_gms,sizeof(GMS_STRU),RT_WAITING_FOREVER)==RT_EOK) //从cpname_pipe获取消息，等待模式
-  // {
-      
-  //  LOG_D("msg recved");
-  // }
+            if(rsuc_gms.d_cmd.is_src_cmd == 1)//使用源的指令解析
+            {
+                mb_resp_msg(&rsuc_gms,RSUC_CPID,0);  //释放信号量并返回结果
+            }
+            else    //使用目标的指令解析
+            {
+                rt_memset(&rsuc_dat_dmgms,0,sizeof(DM_GMS_STRU)); //清空多维消息体
+                rt_memset(&rsuc_msg_buf,0,sizeof(rsuc_msg_buf));    //清空buf
+                
+                rt_sem_init(&sem_rsuc_sample_pro,"sem_rsuc_sample_pro",0,RT_IPC_FLAG_FIFO);//初始化采样任务确认信号量
+
+                rsuc_msg_buf.d_src=rsuc_gms.d_src;                //获取消息源组件号
+                rsuc_msg_buf.d_len=rsuc_gms.d_dl;                 //获取数据（纯数据区）长度
+                rsuc_msg_buf.dat[0]=rsuc_gms.d_cmd.cmd;           //获取指令码
+
+                rt_memcpy(&rsuc_msg_buf.dat[1],(uint8_t *)rsuc_gms.d_p,rsuc_msg_buf.d_len);
+                
+                rt_mq_send(&rsuc_inside_dat_mq, &rsuc_msg_buf.d_src, sizeof(rsuc_msg_buf));//向任务处理线程发送消息队列
 
 
-  LED1_OFF();
-  rt_thread_mdelay(450);
-  LED1_ON();
-  rt_thread_mdelay(50);
+                mb_resp_msg(&rsuc_gms,RSUC_CPID,0);  //释放信号量并返回结果
 
- }
+                if(RT_EOK==rt_sem_take(&sem_rsuc_sample_pro,RSUC_SAMPLE_WAIT_TIME))//等待采样任务确认消息已处理并释放信号量
+                {
+                     LOG_D("send single sample suc!");  
+                }
+                else 
+                {
+                     LOG_E("send single sample err!");  
+                }
+                rt_sem_detach(&sem_rsuc_sample_pro);//脱离信号量
+            }
+        }
+    }
 }
+
+
+
+
+
+
+
+
 /*
 RSUC注册线程，向主管道中注册
 */

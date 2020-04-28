@@ -2,6 +2,7 @@
     "files.associations": {
         "rsuc_timer.h": "c",
         "storage.h": "c",
-        "rsucmanager.h": "c"
+        "rsucmanager.h": "c",
+        "downstream.h": "c"
     }
 }

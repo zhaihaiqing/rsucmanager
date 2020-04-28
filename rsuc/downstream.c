@@ -1,56 +1,64 @@
-﻿#include <string.h>
-#include "rtthread.h"
-#include "rsuc_pro.h"
-#include "board.h"
-#include <ulog.h>
-#include "downstream.h"
-#include "rsuc_timer.h"
-
+﻿#include "rsucmanager.h"
 
 /* 用于接收消息的信号量*/
 //struct rt_semaphore down_rx_sem;
 rt_device_t down_serial;
-UART1_RBUF_ST	uart2_rbuf	=	{ 0, 0, };
-Down_RX_type down_rx_buff;
+UART2_RBUF_ST	uart2_rbuf	=	{ 0, 0, };
+Down_RX_type down_rx_buff={0};
+
+unsigned char down_rx_device_Len=0;
 
 unsigned char down_serial_rx_timeout=DE_DOWN_SERIAL_RX_TIMEOUT;
 
 
-
-
-/* 接收数据回调函数*/
-rt_err_t down_uart_rx_ind(rt_device_t dev, rt_size_t size)
+/*******************************************************************************
+* Function Name  : CRC16_Check
+* Description    : CRC校验
+* Input          : None
+* Output         : None
+* Return         : None
+*******************************************************************************/
+uint16_t Modbus_CRC16_Check(uint8_t *Pushdata,uint8_t length)
 {
-    uint8_t ch=0;
-    UART1_RBUF_ST *p = &uart2_rbuf;
+	uint16_t Reg_CRC=0xffff;
+	uint8_t i,j;
+	for( i = 0; i<length; i ++)
+	{
+		Reg_CRC^= *Pushdata++;
+		for (j = 0; j<8; j++)
+		{
+			if (Reg_CRC & 0x0001)
 
-    rt_device_read(down_serial, 0, &ch, 1);//获取数据
-
-    if(!down_rx_buff.DataFlag)
-    {
-        if((((p->out - p->in) & (ONE_DATA_MAXLEN - 1)) == 0) || down_serial_rx_timeout)
-        {
-            down_serial_rx_timeout=DE_DOWN_SERIAL_RX_TIMEOUT;
-            if((p->in - p->out)<ONE_DATA_MAXLEN)
-            {
-                p->buf [p->in & (ONE_DATA_MAXLEN-1)] = ch;	
-				p->in++;
-            }
-            down_rx_buff.DataLen  = (p->in - p->out) & (ONE_DATA_MAXLEN - 1);
-        }
-    }
-    return RT_EOK;
+			Reg_CRC=Reg_CRC>>1^0xA001;
+			else
+			Reg_CRC >>=1;
+		}
+	}
+	return   Reg_CRC;
 }
 
+
+void down_uart_send_dat(unsigned char *dat,unsigned short len)
+{
+    rsuc_RS485_TX();
+    rt_device_write(down_serial,0,dat,len);
+    rsuc_RS485_RX();
+}
 
 /**********************************************************************************
 * 串口1接收字符函数，阻塞模式（接收缓冲区中提取）
 **********************************************************************************/
 uint16_t down_USART_GetCharBlock(uint16_t timeout)
 {
-	UART1_RBUF_ST *p = &uart2_rbuf;
+	UART2_RBUF_ST *p = &uart2_rbuf;
 	uint16_t to = timeout;	
-	while(p->out == p->in)if(!(--to))return 0xffff;
+	while(p->out == p->in)
+    {
+        if(!(--to))
+        {
+            return 0xffff;
+        }
+    }
 	return (p->buf [(p->out++) & (ONE_DATA_MAXLEN - 1)]);
 }
 
@@ -59,9 +67,11 @@ uint16_t down_USART_GetCharBlock(uint16_t timeout)
 **********************************************************************************/
 uint16_t down_USART_GetChar(void)
 {
-	UART1_RBUF_ST *p = &uart2_rbuf;			
+	UART2_RBUF_ST *p = &uart2_rbuf;			
 	if(p->out == p->in) //缓冲区空条件
-		return 0xffff;
+	{
+        return 0xffff;
+    }
 	return down_USART_GetCharBlock(1000);
 }
 
@@ -70,7 +80,7 @@ uint16_t down_USART_GetChar(void)
 **********************************************************************************/
 void down_USART_ClearBuf_Flag(void)
 {
-	UART1_RBUF_ST *p = &uart2_rbuf;
+	UART2_RBUF_ST *p = &uart2_rbuf;
 	p->out = 0;
 	p->in = 0;
 	
@@ -78,80 +88,101 @@ void down_USART_ClearBuf_Flag(void)
 	down_rx_buff.DataLen = 0;
 }
 
-/*up_usart线程处理函数*/
-void down_data_parsing(void)
+/* 接收数据回调函数*/
+rt_err_t down_uart_rx_ind(rt_device_t dev, rt_size_t size)
+{
+    uint8_t ch=0;
+    UART2_RBUF_ST *p = &uart2_rbuf;
+
+    if(size>0)
+    {
+        rt_device_read(down_serial, 0, &ch, 1);//获取数据
+        
+        if(!down_rx_buff.DataFlag)
+        {
+            if((((p->out - p->in) & (ONE_DATA_MAXLEN - 1)) == 0) || down_serial_rx_timeout)
+            {
+                down_serial_rx_timeout=DE_DOWN_SERIAL_RX_TIMEOUT;
+                if((p->in - p->out)<ONE_DATA_MAXLEN)
+                {
+                    p->buf [p->in & (ONE_DATA_MAXLEN-1)] = ch;	
+			        p->in++;
+                }
+                down_rx_buff.DataLen  = (p->in - p->out) & (ONE_DATA_MAXLEN - 1);
+            }
+        }
+    }
+    return RT_EOK;
+}
+
+/**************************************************
+ * 
+ * 创建串口数据接收线程，高优先级
+ * 静态创建
+ * ***********************************************/
+void down_data_parsing_thread_entry(void *p)
 {
     int8_t ch;
-    //char data[ONE_DATA_MAXLEN];
     uint8_t i=0;
-
+    unsigned int rx_count=0;
     while(1)
-    {
+    {        
+        if(!down_rx_buff.DataFlag)//帧结束标志位为0，则等待完成信号量
+        {
+            //LOG_D("wait down_rx_sem");
+            rt_sem_take(&down_rx_sem, RT_WAITING_FOREVER);//获取信号量
+            down_rx_buff.DataFlag=1;
+            //LOG_D("get down_rx_sem");
+        }
         if(down_rx_buff.DataFlag)
         {
-            //发送接收完成信号量
-            rt_kprintf("rx_len:%d\r\n", down_rx_buff.DataLen);
-
-            for(i=0;i<down_rx_buff.DataLen;i++)
-                down_rx_buff.dat[i]=down_USART_GetChar();
-
-
-            for(i=0;i<down_rx_buff.DataLen;i++)
-                rt_kprintf("0x%x ", down_rx_buff.dat[i]);
-            rt_kprintf("\r\n");
+            if(down_rx_buff.DataLen!=0)
+            {
+                rx_count++;
+                for(i=0;i<down_rx_buff.DataLen;i++)
+                {
+                    down_rx_buff.dat[i]=down_USART_GetChar();
+                }
             
+                for(i=0;i<down_rx_buff.DataLen;i++)
+                {
+                    rt_kprintf("0x%x ", down_rx_buff.dat[i]);
+                }
+                rt_kprintf(" RxLen:%d,rx_count:%d\r\n",down_rx_buff.DataLen,rx_count);
+                down_rx_device_Len=down_rx_buff.DataLen;
+                
+                rt_sem_release(&down_frame_sem);//处理完成后发送信号量
+            }
             down_USART_ClearBuf_Flag();
-            continue;
         }
-
-         rt_thread_mdelay(20);
     }
 }
 
 
-int down_usart_init(void)
-{
-    rt_err_t ret=RT_EOK;
-    char uart_name[RT_NAME_MAX];
-    char str[]="hello RT_Thread!\r\n";
 
-    rt_strncpy(uart_name,DOWNSTREAM_UART_NAME,RT_NAME_MAX);
-    /*查找系统中的串口设备*/
 
-    down_serial = rt_device_find(uart_name);
-    if(!down_serial)
-    {
-        rt_kprintf("find %s failed!\n",uart_name);
-        return RT_ERROR;
-    }
 
-    /*初始化信号量*/
-    //rt_sem_init(&down_rx_sem,"down_rx_sem",0,RT_IPC_FLAG_FIFO);
 
-    /*以中断接收及轮询发送模式打开串口设备*/
-    rt_device_open(down_serial,RT_DEVICE_FLAG_INT_RX);
 
-    /*设置回调函数*/
-    rt_device_set_rx_indicate(down_serial,down_uart_rx_ind);
 
-    /*发送字符*/
-    rt_device_write(down_serial,0,str,(sizeof(str)-1));
 
-    /*创建线程*/
-    rt_thread_t down_usart_thread = rt_thread_create("down_serial",(void (*)(void *parameter))down_data_parsing,RT_NULL,1024,25,10 );
 
-    /*启动创建的线程*/
-    if(down_usart_thread!=RT_NULL)
-    {
-        rt_thread_startup(down_usart_thread);
-    }
-    else
-    {
-        ret = RT_ERROR;
-    }
 
-    return ret;
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
