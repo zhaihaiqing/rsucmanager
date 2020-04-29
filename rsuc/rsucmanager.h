@@ -13,6 +13,7 @@
 #include "sub_sample.h"
 #include "rsuc_timer.h"
 
+#define RSUC_DEBUG
 
 //注:将CPNAME替换为实际mapp名，形如UTCM STOM
 
@@ -31,7 +32,7 @@ typedef struct __attribute__ ((__packed__))
 {
 	uint8_t  d_src;							//消息源
 	uint8_t  d_len;                         //数据长度
-    uint8_t  dat[64];						//每个消息最长64字节
+    uint8_t  dat[256];						//每个消息最长64字节
 }rsuc_inside_dat_type;
 
 /* 定义结构体，组件返回消息 */
@@ -40,17 +41,16 @@ typedef struct __attribute__ ((__packed__))
 	uint8_t  src;							//消息源
 	uint8_t	 mq_type;
 	uint8_t  is_mq_success;
-	uint8_t  d_len;                         //数据长度
-    uint8_t  dat[64];						//每个消息最长64字节
+	uint8_t  d_len;                         //返回的数据长度
+	uint8_t	 *dp;
 }rsuc_output_dat_type;
 
 
-
+//第三层：向源组件返回消息
 extern rsuc_output_dat_type rsuc_output_dat;
-
-
 extern struct rt_semaphore sem_rsuc;
 extern RESP_STRU rsuc_resp_data; 
+extern uint8_t   rsuc_output_eq_buf[256];
 
 
 extern CP_CTL_STRU rsuc_ctl; //CPNAME组件控制体
@@ -64,7 +64,7 @@ extern GMS_STRU rsuc_gms; //主管道信息,用于解析
 
 
 
-extern struct rt_messagequeue rsuc_inside_dat_mq;
+extern struct rt_messagequeue rsuc_input_dat_mq;  //定义主线程与数据处理函数的消息队列
 extern struct rt_semaphore sem_rsuc_sample_pro; 
 
 

@@ -261,12 +261,32 @@ int manager_eq(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t type,uint8_t p
        err= 0xE9;
     } 
 
-    if(err==0)
-    {
+    // if(err==0)
+    // {
+    //     rsuc_output_dat.src=d_src;
+    //     rsuc_output_dat.mq_type=mq_type;
+    //     rsuc_output_dat.is_mq_success=err;
+    //     rsuc_output_dat.d_len=0;
+    //     rsuc_output_dat.dp  = &rsuc_output_eq_buf[0];
+    //     //rt_memcpy(&rsuc_output_dat.dat[0],&rx_temp[0],rsuc_output_dat.d_len);
+    //     //发送数据
+    //     mb_make_dmgms(&rsuc_tmp_dmgms,0,&sem_rsuc,CP_CMD_DST(SEN_EQ_PAS),d_src,RSUC_CPID,(uint8_t *)&rsuc_output_dat,sizeof(rsuc_output_dat),&rsuc_resp_data); //向多维消息体中装入消息
+    //     if(RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
+    //     {
+    //         LOG_D("return param suc!");
+    //     }   
+    //     else
+    //     {
+    //         LOG_E("return param err!");
+    //     }
+    // }
+    // else
+    // {
         rsuc_output_dat.src=d_src;
         rsuc_output_dat.mq_type=mq_type;
         rsuc_output_dat.is_mq_success=err;
-        rsuc_output_dat.d_len=0;
+        rsuc_output_dat.d_len=0;   
+        rsuc_output_dat.dp  = &rsuc_output_eq_buf[0];
         //rt_memcpy(&rsuc_output_dat.dat[0],&rx_temp[0],rsuc_output_dat.d_len);
         //发送数据
         mb_make_dmgms(&rsuc_tmp_dmgms,0,&sem_rsuc,CP_CMD_DST(SEN_EQ_PAS),d_src,RSUC_CPID,(uint8_t *)&rsuc_output_dat,sizeof(rsuc_output_dat),&rsuc_resp_data); //向多维消息体中装入消息
@@ -278,25 +298,7 @@ int manager_eq(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t type,uint8_t p
         {
             LOG_E("return param err!");
         }
-    }
-    else
-    {
-        rsuc_output_dat.src=d_src;
-        rsuc_output_dat.mq_type=mq_type;
-        rsuc_output_dat.is_mq_success=err;
-        rsuc_output_dat.d_len=0;
-        //rt_memcpy(&rsuc_output_dat.dat[0],&rx_temp[0],rsuc_output_dat.d_len);
-        //发送数据
-        mb_make_dmgms(&rsuc_tmp_dmgms,0,&sem_rsuc,CP_CMD_DST(SEN_EQ_PAS),d_src,RSUC_CPID,(uint8_t *)&rsuc_output_dat,sizeof(rsuc_output_dat),&rsuc_resp_data); //向多维消息体中装入消息
-        if(RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
-        {
-            LOG_D("return param suc!");
-        }   
-        else
-        {
-            LOG_E("return param err!");
-        }
-    }
+    //}
     
 
 
@@ -314,16 +316,13 @@ int Check_in_CFG(void)
 {
     int fd=0,size=0;
     int res=0,status=0;
-
     struct stat stat_buf;
-
     in_manag_type   eq_in_blocktest={0};
 
     res=stat("/INMA.CFG",&stat_buf);//获取文件信息
-
     if(res==0)//获取文件信息成功
     {
-        LOG_D("INMA.CFG read info OK,size:%d",stat_buf.st_size);
+        LOG_D("INMA.CFG read info OK,ALL_IN_size:%d,eq_in_size",stat_buf.st_size,sizeof(eq_in_blocktest));
         status=1;
     }
     else
@@ -331,40 +330,40 @@ int Check_in_CFG(void)
        LOG_D("INMA.CFG read failure");
        status=0;
     }
-    
+
+    return status; //如果成功，返回0，如果不成功，返回对应的标志位
+}
 
 
-//创建指令表
+int Init_in_CFG(void)
+{
+    int fd=0,size=0;
+    int res=0,status=0;
+    int i=0;
+    struct stat stat_buf;
+
+    eq_in_index_type eq_in_index={0};
+    in_manag_type   eq_in_blocktest={0};
+
+    //创建指令表，仅供测试
     fd = open("/INMA.CFG", O_RDWR | O_CREAT);
     if(fd>0)     //如果打开或创建文件成功，则初始化配置表
     {
+        LOG_D("Open INMA.CFG");
 
-
-        eq_in_blocktest.eq_type=0;
-        eq_in_blocktest.check_type=1;
-        eq_in_blocktest.eq_res_time=300;
-        eq_in_blocktest.eq_in_type=0;
-
-
-        eq_in_blocktest.eq_in[2].in_len=8;
-        eq_in_blocktest.eq_in[2].in[0]=1;
-        eq_in_blocktest.eq_in[2].in[1]=0x04;
-        eq_in_blocktest.eq_in[2].in[2]=0x00;
-        eq_in_blocktest.eq_in[2].in[3]=0x10;
-        eq_in_blocktest.eq_in[2].in[4]=0x00;
-        eq_in_blocktest.eq_in[2].in[5]=0x13;
-        eq_in_blocktest.eq_in[2].in[6]=0;
-        eq_in_blocktest.eq_in[2].in[7]=0;
-
+        rt_memset(&eq_in_index,0,sizeof(eq_in_index));
+        eq_in_index.version_H=0x04;
+        eq_in_index.version_L=0x00;
+        eq_in_index.support_eq_type_minID=0x01;
+        eq_in_index.support_eq_type_maxID=0x03;
         lseek(fd,0,SEEK_SET); 
-        write(fd, &eq_in_blocktest, 16);
+        write(fd, &eq_in_index, sizeof(eq_in_index));
 
+        rt_memset(&eq_in_blocktest,0,sizeof(eq_in_blocktest));
         eq_in_blocktest.eq_type=1;
         eq_in_blocktest.check_type=1;
         eq_in_blocktest.eq_res_time=300;
-        eq_in_blocktest.eq_in_type=0;
-
-
+        eq_in_blocktest.eq_in_type=1;
         eq_in_blocktest.eq_in[2].in_len=8;
         eq_in_blocktest.eq_in[2].in[0]=1;
         eq_in_blocktest.eq_in[2].in[1]=0x04;
@@ -372,17 +371,21 @@ int Check_in_CFG(void)
         eq_in_blocktest.eq_in[2].in[3]=0x10;
         eq_in_blocktest.eq_in[2].in[4]=0x00;
         eq_in_blocktest.eq_in[2].in[5]=0x13;
-        eq_in_blocktest.eq_in[2].in[6]=0;
-        eq_in_blocktest.eq_in[2].in[7]=0;
-
         lseek(fd,(eq_in_blocktest.eq_type-1)*sizeof(eq_in_blocktest)+RSUC_IN_INDEX_SIZE,SEEK_SET); 
         write(fd, &eq_in_blocktest, sizeof(eq_in_blocktest));
 
+        rt_memset(&eq_in_blocktest,0,sizeof(eq_in_blocktest));
         eq_in_blocktest.eq_type=2;
         eq_in_blocktest.check_type=1;
         eq_in_blocktest.eq_res_time=300;
         eq_in_blocktest.eq_in_type=0;
-
+        eq_in_blocktest.eq_in[0].in_len=8;
+        eq_in_blocktest.eq_in[0].in[0]=1;
+        eq_in_blocktest.eq_in[0].in[1]=0x03;
+        eq_in_blocktest.eq_in[0].in[2]=0x00;
+        eq_in_blocktest.eq_in[0].in[3]=0x00;
+        eq_in_blocktest.eq_in[0].in[4]=0x00;
+        eq_in_blocktest.eq_in[0].in[5]=0x10;
 
         eq_in_blocktest.eq_in[2].in_len=8;
         eq_in_blocktest.eq_in[2].in[0]=1;
@@ -391,19 +394,22 @@ int Check_in_CFG(void)
         eq_in_blocktest.eq_in[2].in[3]=0x10;
         eq_in_blocktest.eq_in[2].in[4]=0x00;
         eq_in_blocktest.eq_in[2].in[5]=0x13;
-        eq_in_blocktest.eq_in[2].in[6]=0;
-        eq_in_blocktest.eq_in[2].in[7]=0;
 
+        eq_in_blocktest.eq_in[3].in_len=8;
+        eq_in_blocktest.eq_in[3].in[0]=1;
+        eq_in_blocktest.eq_in[3].in[1]=0x03;
+        eq_in_blocktest.eq_in[3].in[2]=0x00;
+        eq_in_blocktest.eq_in[3].in[3]=0x56;
+        eq_in_blocktest.eq_in[3].in[4]=0x00;
+        eq_in_blocktest.eq_in[3].in[5]=0x02;
         lseek(fd,(eq_in_blocktest.eq_type-1)*sizeof(eq_in_blocktest)+RSUC_IN_INDEX_SIZE,SEEK_SET); 
-
         write(fd, &eq_in_blocktest, sizeof(eq_in_blocktest));
 
+        rt_memset(&eq_in_blocktest,0,sizeof(eq_in_blocktest));
         eq_in_blocktest.eq_type=3;
         eq_in_blocktest.check_type=1;
         eq_in_blocktest.eq_res_time=300;
         eq_in_blocktest.eq_in_type=0;
-
-
         eq_in_blocktest.eq_in[2].in_len=8;
         eq_in_blocktest.eq_in[2].in[0]=1;
         eq_in_blocktest.eq_in[2].in[1]=0x04;
@@ -411,21 +417,12 @@ int Check_in_CFG(void)
         eq_in_blocktest.eq_in[2].in[3]=0x10;
         eq_in_blocktest.eq_in[2].in[4]=0x00;
         eq_in_blocktest.eq_in[2].in[5]=0x13;
-        eq_in_blocktest.eq_in[2].in[6]=0;
-        eq_in_blocktest.eq_in[2].in[7]=0;
-
-
-        
-
         lseek(fd,(eq_in_blocktest.eq_type-1)*sizeof(eq_in_blocktest)+RSUC_IN_INDEX_SIZE,SEEK_SET); 
-
         write(fd, &eq_in_blocktest, sizeof(eq_in_blocktest));
-
 
         LOG_D("INMA.CFG creat or fopen OK,fd:%d",fd);
         stat("/INMA.CFG",&stat_buf);
         LOG_D("INMA.CFG size:%d,eq_in_size:%d",stat_buf.st_size,sizeof(eq_in_blocktest));
-
         close(fd);
     }
     else  
@@ -433,8 +430,10 @@ int Check_in_CFG(void)
         LOG_D("Creat INMA.CFG failure");
     }
 
+
     return status; //如果成功，返回0，如果不成功，返回对应的标志位
 }
+
 
 
 

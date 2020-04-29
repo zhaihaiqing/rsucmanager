@@ -18,7 +18,7 @@ int rsuc_sub_sample(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t *dat,uint
 {
     uint8_t i=0,rx_len=0;
     
-    uint8_t rx_temp[128]={0};
+    //uint8_t rx_temp[128]={0};
 
     DM_GMS_STRU rsuc_tmp_dmgms;//主管道多维消息,发送数据用
     GMS_STRU rsuc_gms;
@@ -48,7 +48,7 @@ int rsuc_sub_sample(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t *dat,uint
     }
     else
     {
-        if(eq_manag.eq[addr-1].eq_addr==0)err= 0xd1;      //1：判断该设备是否在节点表中存在
+        if(eq_manag.eq[addr-1].eq_addr==0)err= 0xd1;        //1：判断该设备是否在节点表中存在
         eq_type=eq_manag.eq[addr-1].eq_type;                //2：根据地址，在节点表中查找对应的设备类型
 
         eq_type=2;                                          //3：根据设备类型，在指令表中读取该设备的指令
@@ -84,7 +84,8 @@ int rsuc_sub_sample(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t *dat,uint
                 rsuc_output_dat.mq_type=mq_type;
                 rsuc_output_dat.is_mq_success=0;
                 rsuc_output_dat.d_len=sizeof(eq_in_index);
-                rt_memcpy(&rsuc_output_dat.dat[0],&eq_in_index.version_H,rsuc_output_dat.d_len);
+                rt_memcpy(&rsuc_output_eq_buf[0],&eq_in_index.version_H,rsuc_output_dat.d_len);
+                rsuc_output_dat.dp  = &rsuc_output_eq_buf[0];
                 //发送数据
                 mb_make_dmgms(&rsuc_tmp_dmgms,0,&sem_rsuc,CP_CMD_DST(GET_EQ_INDEX_INFO),d_src,RSUC_CPID,(uint8_t *)&rsuc_output_dat,sizeof(rsuc_output_dat),&rsuc_resp_data); //向多维消息体中装入消息
                 if(RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
@@ -108,9 +109,10 @@ int rsuc_sub_sample(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t *dat,uint
                 if(res == RT_EOK)//获取成功
                 {
                     rx_len=down_rx_device_Len;
-                    for(i=0;i<rx_len;i++)rx_temp[i]=down_rx_buff.dat[i];//获取串口数据
-                    crc16=Modbus_CRC16_Check(rx_temp,rx_len-2);
-                    if( (rx_temp[0]==addr) && (crc16 == ( (rx_temp[rx_len - 1] << 8) | rx_temp[rx_len - 2])) )//对返回的数据进行地址+CRC判定
+                    //for(i=0;i<rx_len;i++)rsuc_output_eq_buf[i]=down_rx_buff.dat[i];//获取串口数据
+                    rt_memcpy(&rsuc_output_eq_buf[0],&down_rx_buff.dat[0],rx_len);
+                    crc16=Modbus_CRC16_Check(rsuc_output_eq_buf,rx_len-2);
+                    if( (rsuc_output_eq_buf[0]==addr) && (crc16 == ( (rsuc_output_eq_buf[rx_len - 1] << 8) | rsuc_output_eq_buf[rx_len - 2])) )//对返回的数据进行地址+CRC判定
                     {
                         err=0x00;
                     }
@@ -131,7 +133,7 @@ int rsuc_sub_sample(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t *dat,uint
                     rsuc_output_dat.mq_type=mq_type;
                     rsuc_output_dat.is_mq_success=0;
                     rsuc_output_dat.d_len=rx_len;
-                    rt_memcpy(&rsuc_output_dat.dat[0],&rx_temp[0],rsuc_output_dat.d_len);
+                    rsuc_output_dat.dp  = &rsuc_output_eq_buf[0];
                     //发送数据
                     mb_make_dmgms(&rsuc_tmp_dmgms,0,&sem_rsuc,CP_CMD_DST(GET_EQ_CFG_INFO),d_src,RSUC_CPID,(uint8_t *)&rsuc_output_dat,sizeof(rsuc_output_dat),&rsuc_resp_data); //向多维消息体中装入消息
                     if(RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
@@ -149,9 +151,9 @@ int rsuc_sub_sample(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t *dat,uint
                     rsuc_output_dat.mq_type=mq_type;
                     rsuc_output_dat.is_mq_success=err;
                     rsuc_output_dat.d_len=rx_len;
-                    rt_memcpy(&rsuc_output_dat.dat[0],&rx_temp[0],rsuc_output_dat.d_len);
+                    rsuc_output_dat.dp  = &rsuc_output_eq_buf[0];
                     //发送数据
-                    mb_make_dmgms(&rsuc_tmp_dmgms,0,&sem_rsuc,CP_CMD_DST(SEN_EQ_PAS),d_src,RSUC_CPID,(uint8_t *)&rsuc_output_dat,sizeof(rsuc_output_dat),&rsuc_resp_data); //向多维消息体中装入消息
+                    mb_make_dmgms(&rsuc_tmp_dmgms,0,&sem_rsuc,CP_CMD_DST(GET_EQ_CFG_INFO),d_src,RSUC_CPID,(uint8_t *)&rsuc_output_dat,sizeof(rsuc_output_dat),&rsuc_resp_data); //向多维消息体中装入消息
                     if(RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
                     {
                         LOG_D("return param suc!");
@@ -161,7 +163,6 @@ int rsuc_sub_sample(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t *dat,uint
                         LOG_E("return param err!");
                     }
                 }
-                
                 break;
         case GET_EQ_GET_SDAT: //获取数据，判断单双指令
                     LOG_D("GET_EQ_GET_SDAT");
@@ -180,9 +181,10 @@ int rsuc_sub_sample(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t *dat,uint
                         if(res == RT_EOK)
                         {
                             rx_len=down_rx_device_Len;
-                            for(i=0;i<rx_len;i++)rx_temp[i]=down_rx_buff.dat[i];//获取串口数据
-                            crc16=Modbus_CRC16_Check(rx_temp,rx_len-2);
-                            if( (rx_temp[0]==addr) && (crc16 == ( (rx_temp[rx_len - 1] << 8) | rx_temp[rx_len - 2])) )
+                            //for(i=0;i<rx_len;i++)rsuc_output_eq_buf[i]=down_rx_buff.dat[i];//获取串口数据
+                            rt_memcpy(&rsuc_output_eq_buf[0],&down_rx_buff.dat[0],rx_len);
+                            crc16=Modbus_CRC16_Check(rsuc_output_eq_buf,rx_len-2);
+                            if( (rsuc_output_eq_buf[0]==addr) && (crc16 == ( (rsuc_output_eq_buf[rx_len - 1] << 8) | rsuc_output_eq_buf[rx_len - 2])) )
                             {
                                 err=0x00;
                             }
@@ -203,9 +205,9 @@ int rsuc_sub_sample(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t *dat,uint
                             rsuc_output_dat.mq_type=mq_type;
                             rsuc_output_dat.is_mq_success=err;
                             rsuc_output_dat.d_len=rx_len;
-                            rt_memcpy(&rsuc_output_dat.dat[0],&rx_temp[0],rsuc_output_dat.d_len);
+                            rsuc_output_dat.dp  = &rsuc_output_eq_buf[0];
                             //发送数据
-                            mb_make_dmgms(&rsuc_tmp_dmgms,0,&sem_rsuc,CP_CMD_DST(SEN_EQ_PAS),d_src,RSUC_CPID,(uint8_t *)&rsuc_output_dat,sizeof(rsuc_output_dat),&rsuc_resp_data); //向多维消息体中装入消息
+                            mb_make_dmgms(&rsuc_tmp_dmgms,0,&sem_rsuc,CP_CMD_DST(GET_EQ_GET_SDAT),d_src,RSUC_CPID,(uint8_t *)&rsuc_output_dat,sizeof(rsuc_output_dat),&rsuc_resp_data); //向多维消息体中装入消息
                             if(RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
                             {
                                 LOG_D("return param suc!");
@@ -231,10 +233,11 @@ int rsuc_sub_sample(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t *dat,uint
                     {
                         rx_len=down_rx_device_Len;
                         LOG_D("rx_len:%d",rx_len);
-                        for(i=0;i<rx_len;i++)rx_temp[i]=down_rx_buff.dat[i];//获取串口数据
-                        crc16=Modbus_CRC16_Check(&rx_temp[0],rx_len-2);
+                        //for(i=0;i<rx_len;i++)rsuc_output_eq_buf[i]=down_rx_buff.dat[i];//获取串口数据
+                        rt_memcpy(&rsuc_output_eq_buf[0],&down_rx_buff.dat[0],rx_len);
+                        crc16=Modbus_CRC16_Check(&rsuc_output_eq_buf[0],rx_len-2);
                         LOG_D("crc16:0x%x",crc16);
-                        if( (rx_temp[0]==addr) && (crc16 == ( (rx_temp[rx_len - 1] << 8) | rx_temp[rx_len - 2])) )//对返回的数据进行地址+CRC判定
+                        if( (rsuc_output_eq_buf[0]==addr) && (crc16 == ( (rsuc_output_eq_buf[rx_len - 1] << 8) | rsuc_output_eq_buf[rx_len - 2])) )//对返回的数据进行地址+CRC判定
                         {
                             err=0x00;
                         }
@@ -255,7 +258,7 @@ int rsuc_sub_sample(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t *dat,uint
                         rsuc_output_dat.mq_type=mq_type;
                         rsuc_output_dat.is_mq_success=0;
                         rsuc_output_dat.d_len=rx_len;
-                        rt_memcpy(&rsuc_output_dat.dat[0],&rx_temp[0],rsuc_output_dat.d_len);
+                        rsuc_output_dat.dp  = &rsuc_output_eq_buf[0];
                         //发送数据
                         mb_make_dmgms(&rsuc_tmp_dmgms,0,&sem_rsuc,CP_CMD_DST(GET_EQ_GET_SDAT),d_src,RSUC_CPID,(uint8_t *)&rsuc_output_dat,sizeof(rsuc_output_dat),&rsuc_resp_data); //向多维消息体中装入消息
                         if(RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
@@ -273,9 +276,9 @@ int rsuc_sub_sample(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t *dat,uint
                         rsuc_output_dat.mq_type=mq_type;
                         rsuc_output_dat.is_mq_success=err;
                         rsuc_output_dat.d_len=rx_len;
-                        rt_memcpy(&rsuc_output_dat.dat[0],&rx_temp[0],rsuc_output_dat.d_len);
+                        rsuc_output_dat.dp  = &rsuc_output_eq_buf[0];
                         //发送数据
-                        mb_make_dmgms(&rsuc_tmp_dmgms,0,&sem_rsuc,CP_CMD_DST(SEN_EQ_PAS),d_src,RSUC_CPID,(uint8_t *)&rsuc_output_dat,sizeof(rsuc_output_dat),&rsuc_resp_data); //向多维消息体中装入消息
+                        mb_make_dmgms(&rsuc_tmp_dmgms,0,&sem_rsuc,CP_CMD_DST(GET_EQ_GET_SDAT),d_src,RSUC_CPID,(uint8_t *)&rsuc_output_dat,sizeof(rsuc_output_dat),&rsuc_resp_data); //向多维消息体中装入消息
                         if(RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
                         {
                             LOG_D("return param suc!");
@@ -287,13 +290,81 @@ int rsuc_sub_sample(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t *dat,uint
                     }
                         
                 break;
+        case EQ_CUSTOM_COMMAND: //自定义指令
+                eq_in_block.eq_in[3].in[0]=addr;
+                crc16=Modbus_CRC16_Check(&eq_in_block.eq_in[3].in[0],eq_in_block.eq_in[3].in_len-2);
+                eq_in_block.eq_in[3].in[eq_in_block.eq_in[3].in_len-2]=crc16 & 0xff;
+                eq_in_block.eq_in[3].in[eq_in_block.eq_in[3].in_len-1]=crc16>>8;
+                eq_timeout=eq_in_block.eq_res_time;
+                down_uart_send_dat(&eq_in_block.eq_in[3].in[0],eq_in_block.eq_in[3].in_len);    //发送指令
+                
+                res=rt_sem_take(&down_frame_sem, eq_timeout);
+                if(res == RT_EOK)//获取成功
+                {
+                    rx_len=down_rx_device_Len;
+                    //for(i=0;i<rx_len;i++)rsuc_output_eq_buf[i]=down_rx_buff.dat[i];//获取串口数据
+                    rt_memcpy(&rsuc_output_eq_buf[0],&down_rx_buff.dat[0],rx_len);
+                    crc16=Modbus_CRC16_Check(rsuc_output_eq_buf,rx_len-2);
+                    if( (rsuc_output_eq_buf[0]==addr) && (crc16 == ( (rsuc_output_eq_buf[rx_len - 1] << 8) | rsuc_output_eq_buf[rx_len - 2])) )//对返回的数据进行地址+CRC判定
+                    {
+                        err=0x00;
+                    }
+                    else
+                    {
+                        err= 0xD3;
+                    }
+                }
+                else
+                {
+                    err= 0xD2;   //超时错误
+                }
+
+                if(err==0)
+                {
+                    //向业务组件发送消息
+                    rsuc_output_dat.src=d_src;
+                    rsuc_output_dat.mq_type=mq_type;
+                    rsuc_output_dat.is_mq_success=0;
+                    rsuc_output_dat.d_len=rx_len;
+                    rsuc_output_dat.dp  = &rsuc_output_eq_buf[0];
+                    //发送数据
+                    mb_make_dmgms(&rsuc_tmp_dmgms,0,&sem_rsuc,CP_CMD_DST(EQ_CUSTOM_COMMAND),d_src,RSUC_CPID,(uint8_t *)&rsuc_output_dat,sizeof(rsuc_output_dat),&rsuc_resp_data); //向多维消息体中装入消息
+                    if(RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
+                    {
+                        LOG_D("return param suc!");
+                    }   
+                    else
+                    {
+                        LOG_E("return param err!");
+                    }
+                }
+                else
+                {
+                    rsuc_output_dat.src=d_src;
+                    rsuc_output_dat.mq_type=mq_type;
+                    rsuc_output_dat.is_mq_success=err;
+                    rsuc_output_dat.d_len=rx_len;
+                    rsuc_output_dat.dp  = &rsuc_output_eq_buf[0];
+                    //发送数据
+                    mb_make_dmgms(&rsuc_tmp_dmgms,0,&sem_rsuc,CP_CMD_DST(EQ_CUSTOM_COMMAND),d_src,RSUC_CPID,(uint8_t *)&rsuc_output_dat,sizeof(rsuc_output_dat),&rsuc_resp_data); //向多维消息体中装入消息
+                    if(RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
+                    {
+                        LOG_D("return param suc!");
+                    }   
+                    else
+                    {
+                        LOG_E("return param err!");
+                    }
+                }
+                break;
         case SEN_EQ_PAS: //透传指令
                 down_uart_send_dat(dat,dat_len);      //发送透传指令
                 res=rt_sem_take(&down_frame_sem, eq_timeout);//获取信号量   //发送完成后，延时300ms，做超时控制
                 if(res == RT_EOK)//获取成功
                 {
                     rx_len=down_rx_device_Len;
-                    for(i=0;i<rx_len;i++)rx_temp[i]=down_rx_buff.dat[i];//获取串口数据
+                    //for(i=0;i<rx_len;i++)rsuc_output_eq_buf[i]=down_rx_buff.dat[i];//获取串口数据
+                    rt_memcpy(&rsuc_output_eq_buf[0],&down_rx_buff.dat[0],rx_len);
                 }
                 else
                 {
@@ -306,7 +377,7 @@ int rsuc_sub_sample(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t *dat,uint
                     rsuc_output_dat.mq_type=mq_type;
                     rsuc_output_dat.is_mq_success=0;
                     rsuc_output_dat.d_len=rx_len;
-                    rt_memcpy(&rsuc_output_dat.dat[0],&rx_temp[0],rsuc_output_dat.d_len);
+                    rsuc_output_dat.dp  = &rsuc_output_eq_buf[0];
                     //发送数据
                     mb_make_dmgms(&rsuc_tmp_dmgms,0,&sem_rsuc,CP_CMD_DST(SEN_EQ_PAS),d_src,RSUC_CPID,(uint8_t *)&rsuc_output_dat,sizeof(rsuc_output_dat),&rsuc_resp_data); //向多维消息体中装入消息
                     if(RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
@@ -326,7 +397,7 @@ int rsuc_sub_sample(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t *dat,uint
                     rsuc_output_dat.mq_type=mq_type;
                     rsuc_output_dat.is_mq_success=err;
                     rsuc_output_dat.d_len=rx_len;
-                    rt_memcpy(&rsuc_output_dat.dat[0],&rx_temp[0],rsuc_output_dat.d_len);
+                    rsuc_output_dat.dp  = &rsuc_output_eq_buf[0];
                     //发送数据
                     mb_make_dmgms(&rsuc_tmp_dmgms,0,&sem_rsuc,CP_CMD_DST(SEN_EQ_PAS),d_src,RSUC_CPID,(uint8_t *)&rsuc_output_dat,sizeof(rsuc_output_dat),&rsuc_resp_data); //向多维消息体中装入消息
                     if(RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
@@ -347,34 +418,6 @@ int rsuc_sub_sample(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t *dat,uint
 }
 
 
-void    HCF710_Read_test(void)
-{
-    unsigned char temp1[10]={0};
-    unsigned char temp2[10]={0};
-    unsigned short crc16=0;
-    int res=0;
-
-while (1)
-{
-    temp1[0]=0x01;temp1[1]=0x04;temp1[2]=0x00;temp1[3]=0x10;temp1[4]=0x00;temp1[5]=0x13;crc16=Modbus_CRC16_Check(temp1,6);temp1[6]=crc16 & 0xff;temp1[7]=crc16>>8;
-    down_uart_send_dat(temp1,8);    //发送指令1
-
-    res=rt_sem_take(&down_frame_sem, 300);//获取信号量   //发送完成后，延时300ms，做超时控制
-    if(res == RT_EOK)//获取成功
-    {
-        LOG_D("get down_frame_sem OK");
-    }
-    else
-    {
-        LOG_D("get down_frame_sem failure");
-    }
-    
-
-    rt_thread_mdelay(5000);
-
-}
-
-}
 
 
 

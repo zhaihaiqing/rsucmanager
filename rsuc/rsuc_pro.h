@@ -41,8 +41,6 @@ struct rt_semaphore down_rx_sem;		/* 串口接收字节信号量*/
 struct rt_semaphore down_frame_sem;		/* 串口帧信号量*/
 
 
-
-
 extern uint8_t is_eq_table_presence;
 extern uint8_t is_in_table_presence;
 
