@@ -289,6 +289,7 @@ int manager_eq(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t type,uint8_t p
         rsuc_output_dat.dp  = &rsuc_output_eq_buf[0];
         //rt_memcpy(&rsuc_output_dat.dat[0],&rx_temp[0],rsuc_output_dat.d_len);
         //发送数据
+        rt_memset(&rsuc_tmp_dmgms, 0, sizeof(DM_GMS_STRU));
         mb_make_dmgms(&rsuc_tmp_dmgms,0,&sem_rsuc,CP_CMD_DST(SEN_EQ_PAS),d_src,RSUC_CPID,(uint8_t *)&rsuc_output_dat,sizeof(rsuc_output_dat),&rsuc_resp_data); //向多维消息体中装入消息
         if(RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
         {
@@ -334,7 +335,7 @@ int Check_in_CFG(void)
     return status; //如果成功，返回0，如果不成功，返回对应的标志位
 }
 
-
+/*
 int Init_in_CFG(void)
 {
     int fd=0,size=0;
@@ -434,6 +435,7 @@ int Init_in_CFG(void)
     return status; //如果成功，返回0，如果不成功，返回对应的标志位
 }
 
+*/
 
 
 

@@ -13,7 +13,7 @@
 #include "sub_sample.h"
 #include "rsuc_timer.h"
 
-#define RSUC_DEBUG
+//#define RSUC_DEBUG
 
 //注:将CPNAME替换为实际mapp名，形如UTCM STOM
 
@@ -25,14 +25,14 @@
 #define RSUC_POOL_SIZE  (sizeof(GMS_STRU)*RSUC_PIPE_NMSG)
 #define RSUC_REG_SEM_WAIT_TIME  (1000)
 
-#define RSUC_SAMPLE_WAIT_TIME  (60*1000)
+#define RSUC_SAMPLE_WAIT_TIME  (10*1000)
 
 /* 定义结构体，组件消息接收线程与任务处理线程通信 */
 typedef struct __attribute__ ((__packed__))
 {
 	uint8_t  d_src;							//消息源
 	uint8_t  d_len;                         //数据长度
-    uint8_t  dat[256];						//每个消息最长64字节
+    uint8_t  dat[16];						//每个消息最长64字节
 }rsuc_inside_dat_type;
 
 /* 定义结构体，组件返回消息 */

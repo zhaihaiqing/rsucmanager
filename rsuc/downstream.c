@@ -124,7 +124,10 @@ void down_data_parsing_thread_entry(void *p)
 {
     int8_t ch;
     uint8_t i=0;
-    unsigned int rx_count=0;
+    //unsigned int rx_count=0;
+
+    
+
     while(1)
     {        
         if(!down_rx_buff.DataFlag)//帧结束标志位为0，则等待完成信号量
@@ -138,22 +141,25 @@ void down_data_parsing_thread_entry(void *p)
         {
             if(down_rx_buff.DataLen!=0)
             {
-                rx_count++;
+                rt_memset(&down_rx_buff.dat[0],0,ONE_DATA_MAXLEN);
                 for(i=0;i<down_rx_buff.DataLen;i++)
                 {
                     down_rx_buff.dat[i]=down_USART_GetChar();
                 }
-            
-                for(i=0;i<down_rx_buff.DataLen;i++)
-                {
-                    rt_kprintf("0x%x ", down_rx_buff.dat[i]);
-                }
-                rt_kprintf(" RxLen:%d,rx_count:%d\r\n",down_rx_buff.DataLen,rx_count);
+               
+                // for(i=0;i<down_rx_buff.DataLen;i++)
+                // {
+                //     rt_kprintf("0x%02x ", down_rx_buff.dat[i]);
+                // }
+                // rt_kprintf("rx_len:%d\r\n",down_rx_buff.DataLen);
                 down_rx_device_Len=down_rx_buff.DataLen;
-                
+
+                //LOG_D("1111111111rx_len:%d,%d",down_rx_buff.DataLen,down_rx_device_Len);
+
                 rt_sem_release(&down_frame_sem);//处理完成后发送信号量
             }
             down_USART_ClearBuf_Flag();
+            //rt_thread_mdelay(5);
         }
     }
 }

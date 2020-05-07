@@ -10,15 +10,17 @@
 /*******    串口接收线程    ******/
 struct rt_thread rthread_downstream; 
 unsigned char rthread_downstream_stack[THREAD_STACK_SIZE];
-unsigned char downstream_THREAD_PRIORITY=8;
+unsigned char downstream_THREAD_PRIORITY=20;
 
 /*******    总线设备访问线程    ******/
 //1：等待业务组件发送的消息，对消息进行处理，访问下层设备
 //2：等待串口接收线程的信号量，解析数据，发送给业务组件
 struct rt_thread rthread_busdevice_access; 
 unsigned char rthread_busdevice_access_stack[THREAD_STACK_SIZE];
-unsigned char busdevice_access_THREAD_PRIORITY=9;
+unsigned char busdevice_access_THREAD_PRIORITY=21;
 
+struct rt_semaphore down_rx_sem;
+struct rt_semaphore down_frame_sem;
 
 //向主管道发送消息
 int Rsuc_Send_Msg(DM_GMS_STRU *dat)
@@ -77,7 +79,7 @@ int down_usart_init(void)
     
     //初始化信号量
     rt_sem_init(&down_rx_sem,"down_rx_sem",0,RT_IPC_FLAG_FIFO);
-    rt_sem_init(&down_frame_sem,"down_frame_sem",0,RT_IPC_FLAG_FIFO);
+    rt_sem_init(&down_frame_sem,"down_frame_sem",0,RT_IPC_FLAG_FIFO);//创建信号量
 
     /*设置回调函数*/
     rt_device_set_rx_indicate(down_serial,down_uart_rx_ind);
@@ -126,36 +128,62 @@ void rsuc_GPIO_init(void)
 int rsuc_eq_access_thread_entry(void *p)
 {              
     int err=0;
-    uint8_t temp=0;    
+    uint8_t temp[8]={0};    
     rsuc_inside_dat_type  rsuc_dat_buf={0};
     DM_GMS_STRU rsuc_dat_dmgms;
     GMS_STRU rsuc_gms; //主管道信息,用于解析
- 
- #ifdef RSUC_DEBUG  
-    while(1)
-    {
-        rsuc_sub_sample(9,10,1,&temp,1);//查询配置-1
-        rt_thread_mdelay(1000);
-        rsuc_sub_sample(9,12,1,&temp,1);//查询配置-2
-        rt_thread_mdelay(1000);
-        rsuc_sub_sample(9,11,1,&temp,1);//获取数据
+    
+    LOG_D("rsuc_eq_access_thread_entry");
+ //#ifdef RSUC_DEBUG  
+    
+        // rsuc_sub_sample(9,10,1,&temp,1);//查询配置-1
+        // rt_thread_mdelay(1000);
+        // rsuc_sub_sample(9,12,1,&temp,1);//查询配置-2
+        // rt_thread_mdelay(1000);
 
-        rt_thread_mdelay(10000);
-    }
-#endif
+        // rt_thread_mdelay(3000);
+        // LOG_D("rsuc_eq_access_thread_entry");
+
+
+        // temp[0]=0x01;
+        // temp[1]=0x04;
+        // temp[2]=0x00;
+        // temp[3]=0x10;
+        // temp[4]=0x00;
+        // temp[5]=0x13;
+        // temp[6]=0xb0;
+        // temp[7]=0x02;
+        // down_uart_send_dat(&temp[0],8); 
+        // rt_thread_mdelay(2000);
+        // down_uart_send_dat(&temp[0],8); 
+        // rt_thread_mdelay(2000);
+
+        // rsuc_sub_sample(253,11,1,&temp,1);//获取数据
+        // rt_thread_mdelay(2000);
+        // LOG_D("1111111111111111111111111111");
+        // rsuc_sub_sample(253,11,1,&temp,1);//获取数据
+        // rt_thread_mdelay(2000);
+
+        
+    
+//#endif
 
     while(1)
     {
         rt_memset(&rsuc_dat_buf,0,sizeof(rsuc_dat_buf));//清零缓冲区
-        if(rt_mq_recv(&rsuc_input_dat_mq, &rsuc_dat_buf.d_src, sizeof(rsuc_dat_buf), RT_WAITING_FOREVER) == RT_EOK)  //等待消息队列
+        //rt_kprintf("rt_memset rsuc_dat_buf\r\n");
+        if(rt_mq_recv(&rsuc_input_dat_mq, &rsuc_dat_buf, sizeof(rsuc_dat_buf), RT_WAITING_FOREVER) == RT_EOK)  //等待消息队列
         {
-            rt_sem_release(&sem_rsuc_sample_pro);//释放信号量，通知消息接收线程，数据copy已完成
-            rt_memcpy(&rsuc_output_eq_buf[0],0,sizeof(rsuc_output_eq_buf));//清空传感器数据接收buf
+            rt_kprintf("rt_mq_recv  rsuc_input_dat_mq\r\n");
+            //rt_sem_release(&sem_rsuc_sample_pro);//释放信号量，通知消息接收线程，数据copy已完成
+            //rt_memcpy(&rsuc_output_eq_buf[0],0,sizeof(rsuc_output_eq_buf));//清空传感器数据接收buf
+
+            rt_kprintf("rsuc_dat_buf.dat[0]：%d\r\n",rsuc_dat_buf.dat[0]);
             if( (rsuc_dat_buf.dat[0]>=1) && (rsuc_dat_buf.dat[0]<=4) )
             {
                 err=manager_eq(rsuc_dat_buf.d_src,rsuc_dat_buf.dat[0],rsuc_dat_buf.dat[2],rsuc_dat_buf.dat[3],rsuc_dat_buf.dat[4],rsuc_dat_buf.dat[5]);//如果成功，在函数内部直接向源组件发送消息，如果失败，则返回错误代码
             }
-            else if((rsuc_dat_buf.dat[0]>=8) && (rsuc_dat_buf.dat[0]<=11))
+            else if((rsuc_dat_buf.dat[0]>=8) && (rsuc_dat_buf.dat[0]<=12))
             {
                 err=rsuc_sub_sample(rsuc_dat_buf.d_src,rsuc_dat_buf.dat[0],rsuc_dat_buf.dat[2],&rsuc_dat_buf.dat[2],rsuc_dat_buf.d_len-1);//如果成功，在函数内部直接向源组件发送消息，如果失败，则返回错误代码
             }
@@ -174,6 +202,7 @@ int rsuc_eq_access_thread_entry(void *p)
                 rsuc_output_dat.dp  = &rsuc_output_eq_buf[0];
                 //rt_memcpy(&rsuc_output_dat.dat[0],&rx_temp[0],rsuc_output_dat.d_len);
                 //发送数据
+                rt_memset(&rsuc_dat_dmgms, 0, sizeof(DM_GMS_STRU));
                 mb_make_dmgms(&rsuc_dat_dmgms,0,&sem_rsuc,CP_CMD_DST(SEN_EQ_PAS),rsuc_output_dat.src,RSUC_CPID,(uint8_t *)&rsuc_output_dat,sizeof(rsuc_output_dat),&rsuc_resp_data); //向多维消息体中装入消息
                 if(RT_EOK == Rsuc_Send_Msg(&rsuc_dat_dmgms))
                 {

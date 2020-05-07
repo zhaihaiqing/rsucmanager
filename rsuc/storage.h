@@ -77,7 +77,6 @@ int Check_eq_CFG(void);             //检查并初始化设备表
 int manager_eq(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t type,uint8_t par,uint8_t group);//设备管理
 
 int mk_eqin_dir(void);
-
 int Check_in_CFG(void);
 
  #endif

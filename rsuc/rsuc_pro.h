@@ -37,8 +37,8 @@ typedef struct
 
 
 /**********    定义信号量     ************/
-struct rt_semaphore down_rx_sem;		/* 串口接收字节信号量*/
-struct rt_semaphore down_frame_sem;		/* 串口帧信号量*/
+extern struct rt_semaphore down_rx_sem;		/* 串口接收字节信号量*/
+extern struct rt_semaphore down_frame_sem;		/* 串口帧信号量*/
 
 
 extern uint8_t is_eq_table_presence;

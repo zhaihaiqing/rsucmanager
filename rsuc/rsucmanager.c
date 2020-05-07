@@ -28,8 +28,8 @@ uint8_t is_in_table_presence=0;
 
 //第二层：消息线程向任务线程发送消息队列
 struct rt_messagequeue rsuc_input_dat_mq;  //定义主线程与数据处理函数的消息队列
-rt_uint8_t rsuc_input_dat_mq_pool[256];
-struct rt_semaphore sem_rsuc_sample_pro;    //rsuc采样务处理信号量,主任务与采样任务确认信号量
+rt_uint8_t rsuc_input_dat_mq_pool[512];
+//struct rt_semaphore sem_rsuc_sample_pro;    //rsuc采样务处理信号量,主任务与采样任务确认信号量
 
 
 //第三层：向源组件返回消息
@@ -47,21 +47,27 @@ uint8_t   rsuc_output_eq_buf[256]={0};  //传感器返回的数据存在在该�
 *
 ********************************************************************/
 
-
-
-
 void RSUC_msg_pro_entry(void *p) //CPNAME组件消息处理进程
 {
     //DM_GMS_STRU rsuc_dat_dmgms;//主管道多维消息,发送数据用
     GMS_STRU rsuc_gms;
     uint8_t i=0;
+    static rsuc_inside_dat_type rsuc_input_dat={0};
 
-    rsuc_inside_dat_type rsuc_input_dat={0};
-    rt_thread_mdelay(50);
+    rt_thread_mdelay(100);
 
     //初始化硬件、进行相关任务建立
     LOG_D("msg pro thread start");
     LOG_D("Hello world,this is a test info!");
+
+
+    rt_mq_init(&rsuc_input_dat_mq,                 /* 创建消息队列，组件消息接收线程与任务处理线程通信 */
+                "rsuc_input_dat_mq",
+                &rsuc_input_dat_mq_pool,           /* 内存池指向 msg_pool */
+                18,                                /* 每个消息的大小是 18 字节 */
+                sizeof(rsuc_input_dat_mq_pool),    /* 内存池的大小是 msg_pool 的大小 */
+                RT_IPC_FLAG_FIFO);                  /* 如果有多个线程等待，按照先来先得到的方法分配消息 */
+
 
     //硬件初始化
     rsuc_GPIO_init();               //初始化GPIO
@@ -71,40 +77,38 @@ void RSUC_msg_pro_entry(void *p) //CPNAME组件消息处理进程
     is_eq_table_presence=Check_eq_CFG();     //检查设备表，正常=1，异常=0；
     is_in_table_presence=Check_in_CFG();     //检查指令表，正常=1，异常=0；
 
-#ifdef RSUC_DEBUG  
-    Init_in_CFG();
-#endif
+// #ifdef RSUC_DEBUG  
+//     Init_in_CFG();
+// #endif
 
-    rt_mq_init(&rsuc_input_dat_mq,                 /* 创建消息队列，组件消息接收线程与任务处理线程通信 */
-                "rsuc_input_dat_mq",
-                &rsuc_input_dat_mq_pool,           /* 内存池指向 msg_pool */
-                128,                                /* 每个消息的大小是 64 字节 */
-                sizeof(rsuc_input_dat_mq_pool),    /* 内存池的大小是 msg_pool 的大小 */
-                RT_IPC_FLAG_FIFO);                  /* 如果有多个线程等待，按照先来先得到的方法分配消息 */
+    
 
     while(1)
     {
         if(rt_mq_recv(&rsuc_pipe,&rsuc_gms,sizeof(GMS_STRU),RT_WAITING_FOREVER)==RT_EOK) //从cpname_pipe获取消息，等待模式
         {
-            LOG_D("msg recved");
+            rt_kprintf("rsuc:msg recved\r\n");
 
             if(rsuc_gms.d_cmd.is_src_cmd == 1)//使用源的指令解析
             {
-                mb_resp_msg(&rsuc_gms,RSUC_CPID,0);  //释放信号量并返回结果
+                mb_resp_msg(&rsuc_gms,MB_STATN_RSUC,0);  //释放信号量并返回结果
             }
             else    //使用目标的指令解析
             {
                 rt_memset(&rsuc_input_dat,0,sizeof(rsuc_input_dat));    //清空buf
-                rt_sem_init(&sem_rsuc_sample_pro,"sem_rsuc_sample_pro",0,RT_IPC_FLAG_FIFO);//第二层：初始化任务线程信号量
+                //##rt_sem_init(&sem_rsuc_sample_pro,"sem_rsuc_sample_pro",0,RT_IPC_FLAG_FIFO);//第二层：初始化任务线程信号量
 
                 rsuc_input_dat.d_src=rsuc_gms.d_src;                //获取消息源组件号
                 rsuc_input_dat.d_len=rsuc_gms.d_dl;                 //获取数据（纯数据区）长度
                 rsuc_input_dat.dat[0]=rsuc_gms.d_cmd.cmd;           //获取指令码
                 rt_memcpy(&rsuc_input_dat.dat[1],(uint8_t *)rsuc_gms.d_p,rsuc_input_dat.d_len);//获取数据
                 
-                rt_mq_send(&rsuc_input_dat_mq, &rsuc_input_dat.d_src, sizeof(rsuc_input_dat)); //第二层：向任务处理线程发送消息队列
-                mb_resp_msg(&rsuc_gms,RSUC_CPID,0);  //第一层：数据copy并向任务线程发送完成后，释放信号量，通知源组件
+                LOG_D("rsuc:d_src:%d,d_len:%d,mq_type:%d,sizeof(rsuc_input_dat):%d",rsuc_input_dat.d_src,rsuc_input_dat.d_len,rsuc_input_dat.dat[0],sizeof(rsuc_input_dat));
 
+                rt_mq_send(&rsuc_input_dat_mq, &rsuc_input_dat, sizeof(rsuc_input_dat)); //第二层：向任务处理线程发送消息队列
+
+                mb_resp_msg(&rsuc_gms,MB_STATN_RSUC,0);  //第一层：数据copy并向任务线程发送完成后，释放信号量，通知源组件
+/*
                 if(RT_EOK==rt_sem_take(&sem_rsuc_sample_pro,RSUC_SAMPLE_WAIT_TIME))//等待任务任务线程释放信号量，保证任务线程接收到消息
                 {
                      LOG_D("send single sample suc!");  
@@ -114,6 +118,7 @@ void RSUC_msg_pro_entry(void *p) //CPNAME组件消息处理进程
                      LOG_E("send single sample err!");  
                 }
                 rt_sem_detach(&sem_rsuc_sample_pro);//脱离信号量
+                */
             }
         }
     }
@@ -129,7 +134,7 @@ void RSUC_msg_pro_entry(void *p) //CPNAME组件消息处理进程
 /*
 RSUC注册线程，向主管道中注册
 */
-struct rt_semaphore sem_reg;
+struct rt_semaphore rsuc_sem_reg;
 void RSUC_register_entry(void *p)
 {
  unsigned char i=0; 
@@ -141,14 +146,14 @@ void RSUC_register_entry(void *p)
   rsuc_reg.p_pipe=&rsuc_pipe;
   
   { 
-   rt_sem_init(&sem_reg,"rsuc_reg",0,RT_IPC_FLAG_FIFO); //初始化用于消息同步的信号量，接受者在完成消息处理后，必要时需要对信号量进行释放
+   rt_sem_init(&rsuc_sem_reg,"rsuc_reg",0,RT_IPC_FLAG_FIFO); //初始化用于消息同步的信号量，接受者在完成消息处理后，必要时需要对信号量进行释放
 
    rt_memset(&tmp_dmgms,0,sizeof(DM_GMS_STRU)); //清空多维消息体
-   mb_make_dmgms(&tmp_dmgms,0,&sem_reg,CP_CMD_DST(MAINPIPE_CMD_CPREG),MB_STATN_MAIN,MB_STATN_CP_NAME,&rsuc_reg,sizeof(CP_REG_STRU),&resp_reg); //向多维消息体中装入消息
+   mb_make_dmgms(&tmp_dmgms,0,&rsuc_sem_reg,CP_CMD_DST(MAINPIPE_CMD_CPREG),MB_STATN_MAIN,MB_STATN_RSUC,&rsuc_reg,sizeof(CP_REG_STRU),&resp_reg); //向多维消息体中装入消息
 
    rt_mq_send(rsuc_ctl.p_mainpipe,&tmp_dmgms,sizeof(DM_GMS_STRU));//向主管道发送注册命令
 
-   if(RT_EOK!=rt_sem_take(&sem_reg,RSUC_REG_SEM_WAIT_TIME)) //等待接收者释放信号量，超时将造成组件注册失败
+   if(RT_EOK!=rt_sem_take(&rsuc_sem_reg,RSUC_REG_SEM_WAIT_TIME)) //等待接收者释放信号量，超时将造成组件注册失败
    {
     LOG_E("cp-reg ot!");
     return ;
