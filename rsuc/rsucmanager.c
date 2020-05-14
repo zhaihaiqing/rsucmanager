@@ -1,6 +1,6 @@
 ﻿#include "rsucmanager.h"
 
-#define LOG_TAG     "MB_CPNAME"    
+#define LOG_TAG     "RSUC"    
 #define LOG_LVL     LOG_LVL_DBG
 #include <ulog.h>
 
@@ -74,20 +74,23 @@ void RSUC_msg_pro_entry(void *p) //CPNAME组件消息处理进程
     down_usart_init();              //初始化串口
     timer_sample();                 //初始化软件定时器
 
+
+
+    // RSUC_Eq_manag_writeread2();
+    // Init_in_CFG();
+
+
+
+
     is_eq_table_presence=Check_eq_CFG();     //检查设备表，正常=1，异常=0；
     is_in_table_presence=Check_in_CFG();     //检查指令表，正常=1，异常=0；
 
-// #ifdef RSUC_DEBUG  
-//     Init_in_CFG();
-// #endif
-
-    
 
     while(1)
     {
         if(rt_mq_recv(&rsuc_pipe,&rsuc_gms,sizeof(GMS_STRU),RT_WAITING_FOREVER)==RT_EOK) //从cpname_pipe获取消息，等待模式
         {
-            rt_kprintf("rsuc:msg recved\r\n");
+            LOG_D("rsuc:msg recved");
 
             if(rsuc_gms.d_cmd.is_src_cmd == 1)//使用源的指令解析
             {

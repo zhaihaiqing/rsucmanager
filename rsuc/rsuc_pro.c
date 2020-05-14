@@ -32,9 +32,10 @@ int Rsuc_Send_Msg(DM_GMS_STRU *dat)
       if(RT_EOK==rt_sem_take(&sem_rsuc,RSUC_REG_SEM_WAIT_TIME))
       {
           rt_sem_detach(&sem_rsuc);//脱离信号量
-          if(MB_STATN_TESTCOMP==rsuc_resp_data.r_src && 0==rsuc_resp_data.r_res) 
+          LOG_D("dm_gms:%d,r_src:%d,r_res:%d",dat->dm_gms[0].d_des,rsuc_resp_data.r_src,rsuc_resp_data.r_res);
+          if(dat->dm_gms[0].d_des==rsuc_resp_data.r_src && 0==rsuc_resp_data.r_res) 
             return RT_EOK;
-         else
+          else
             return RT_ERROR;
       }
       else
@@ -171,14 +172,11 @@ int rsuc_eq_access_thread_entry(void *p)
     while(1)
     {
         rt_memset(&rsuc_dat_buf,0,sizeof(rsuc_dat_buf));//清零缓冲区
-        //rt_kprintf("rt_memset rsuc_dat_buf\r\n");
         if(rt_mq_recv(&rsuc_input_dat_mq, &rsuc_dat_buf, sizeof(rsuc_dat_buf), RT_WAITING_FOREVER) == RT_EOK)  //等待消息队列
         {
-            rt_kprintf("rt_mq_recv  rsuc_input_dat_mq\r\n");
-            //rt_sem_release(&sem_rsuc_sample_pro);//释放信号量，通知消息接收线程，数据copy已完成
-            //rt_memcpy(&rsuc_output_eq_buf[0],0,sizeof(rsuc_output_eq_buf));//清空传感器数据接收buf
+            LOG_D("rt_mq_recv  rsuc_input_dat_mq");
 
-            rt_kprintf("rsuc_dat_buf.dat[0]：%d\r\n",rsuc_dat_buf.dat[0]);
+            LOG_D("rsuc_dat_buf.dat[0]：%d",rsuc_dat_buf.dat[0]);
             if( (rsuc_dat_buf.dat[0]>=1) && (rsuc_dat_buf.dat[0]<=4) )
             {
                 err=manager_eq(rsuc_dat_buf.d_src,rsuc_dat_buf.dat[0],rsuc_dat_buf.dat[2],rsuc_dat_buf.dat[3],rsuc_dat_buf.dat[4],rsuc_dat_buf.dat[5]);//如果成功，在函数内部直接向源组件发送消息，如果失败，则返回错误代码
@@ -190,28 +188,6 @@ int rsuc_eq_access_thread_entry(void *p)
             else
             {
                 err=0xf1;
-            }
-
-            if(err!=0)
-            {
-                //向源组件返回错误
-                rsuc_output_dat.src=rsuc_dat_buf.d_src;
-                rsuc_output_dat.mq_type=rsuc_dat_buf.dat[0];
-                rsuc_output_dat.is_mq_success=err;
-                rsuc_output_dat.d_len=0;
-                rsuc_output_dat.dp  = &rsuc_output_eq_buf[0];
-                //rt_memcpy(&rsuc_output_dat.dat[0],&rx_temp[0],rsuc_output_dat.d_len);
-                //发送数据
-                rt_memset(&rsuc_dat_dmgms, 0, sizeof(DM_GMS_STRU));
-                mb_make_dmgms(&rsuc_dat_dmgms,0,&sem_rsuc,CP_CMD_DST(SEN_EQ_PAS),rsuc_output_dat.src,RSUC_CPID,(uint8_t *)&rsuc_output_dat,sizeof(rsuc_output_dat),&rsuc_resp_data); //向多维消息体中装入消息
-                if(RT_EOK == Rsuc_Send_Msg(&rsuc_dat_dmgms))
-                {
-                    LOG_D("return param suc!");
-                }   
-                else
-                {
-                    LOG_E("return param err!");
-                }
             }
         }
     }

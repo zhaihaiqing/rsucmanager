@@ -15,51 +15,7 @@ eq_manag_type   eq_manag;       //定义所有的总线设备管理表，组件�
 *
 ********************************************************************************************/
 
-void RSUC_Eq_manag_writeread2(void)
-{
-    unsigned char i=0;
-    int fd=0,size=0;
 
-    eq_manag.version=RSUC_VERSION;
-    eq_manag.flag=0x1234;
-    eq_manag.eq_num=5;
-
-    for(i=0;i<10;i++)
-    {
-        eq_manag.eq[i].eq_addr=i+1;
-    }
-
-    //使用文件操作的方式进行数据读出
-    LOG_D("Used Fopen to read file!!!");
-
-
-    //在配置页中前4个字符，用于放置第一次配置信息
-
-    //写测试
-    fd = open("/EQMA.CFG", O_WRONLY | O_CREAT);   /* 以创建和读写模式打开 /text.txt 文件，如果该文件不存在则创建该文件 */
-    if(fd>0)        //读文件成功
-    {
-        write(fd, &eq_manag, sizeof(eq_manag));
-        close(fd);
-        LOG_D("Used Fwrite to write %d bytes...",sizeof(eq_manag));
-    }
-
-    for(i=0;i<128;i++)storage_buff[i]=0;
-    rt_thread_mdelay(2000);
-
-    //读测试
-    fd = open("/EQMA.CFG", O_RDONLY);   /* 以只读模式打开 /text.txt 文件 */
-    if(fd>0)        //读文件成功
-    {
-        size = read(fd, storage_buff, 32);
-        close(fd);
-    }
-
-    LOG_D("fopen size:%d",size);
-
-    for(i=0;i<size;i++)
-     LOG_D("%d ",storage_buff[i]);
-}
 
 
 /*****************************************************
@@ -172,6 +128,40 @@ int Check_eq_CFG(void)
     return status; //如果成功，返回0，如果不成功，返回对应的标志位
 }
 
+
+
+/*****************************************************
+ * 初始化指令表，检查指令表是否存在，不存在则返回错误
+ * 
+ * 
+ * 
+ ****************************************************/
+int Check_in_CFG(void)
+{
+    int fd=0,size=0;
+    int res=0,status=0;
+    struct stat stat_buf;
+    in_manag_type   eq_in_blocktest={0};
+
+    res=stat("/INMA.CFG",&stat_buf);//获取文件信息
+    if(res==0)//获取文件信息成功
+    {
+        LOG_D("INMA.CFG read info OK,ALL_IN_size:%d,eq_in_size",stat_buf.st_size,sizeof(eq_in_blocktest));
+        status=1;
+    }
+    else
+    {
+       LOG_D("INMA.CFG read failure");
+       status=0;
+    }
+
+    return status; //如果成功，返回0，如果不成功，返回对应的标志位
+}
+
+
+
+
+
 /*****************************************************
  * 管理单个设备（增加、修改、删除）
  * Input：1：操作类型：1-增加，2-修改，3-删除
@@ -227,6 +217,9 @@ int manager_eq(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t type,uint8_t p
 
             write(fd, &eq_manag, sizeof(eq_manag));
             LOG_D("Delte eq Ok,add:%d",addr);
+
+
+            
             
         }
         else if(mq_type==3)//修改设备
@@ -290,7 +283,7 @@ int manager_eq(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t type,uint8_t p
         //rt_memcpy(&rsuc_output_dat.dat[0],&rx_temp[0],rsuc_output_dat.d_len);
         //发送数据
         rt_memset(&rsuc_tmp_dmgms, 0, sizeof(DM_GMS_STRU));
-        mb_make_dmgms(&rsuc_tmp_dmgms,0,&sem_rsuc,CP_CMD_DST(SEN_EQ_PAS),d_src,RSUC_CPID,(uint8_t *)&rsuc_output_dat,sizeof(rsuc_output_dat),&rsuc_resp_data); //向多维消息体中装入消息
+        mb_make_dmgms(&rsuc_tmp_dmgms,0,&sem_rsuc,CP_CMD_SRC(SEN_EQ_PAS),d_src,RSUC_CPID,(uint8_t *)&rsuc_output_dat,sizeof(rsuc_output_dat),&rsuc_resp_data); //向多维消息体中装入消息
         if(RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
         {
             LOG_D("return param suc!");
@@ -307,35 +300,63 @@ int manager_eq(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t type,uint8_t p
 
 
 
-/*****************************************************
- * 初始化指令表，检查指令表是否存在，不存在则返回错误
- * 
- * 
- * 
- ****************************************************/
-int Check_in_CFG(void)
+
+
+
+
+
+
+
+void RSUC_Eq_manag_writeread2(void)
 {
+    unsigned char i=0;
     int fd=0,size=0;
-    int res=0,status=0;
-    struct stat stat_buf;
-    in_manag_type   eq_in_blocktest={0};
 
-    res=stat("/INMA.CFG",&stat_buf);//获取文件信息
-    if(res==0)//获取文件信息成功
+    eq_manag.version=RSUC_VERSION;
+    eq_manag.flag=0x1234;
+    eq_manag.eq_num=5;
+
+    for(i=0;i<10;i++)
     {
-        LOG_D("INMA.CFG read info OK,ALL_IN_size:%d,eq_in_size",stat_buf.st_size,sizeof(eq_in_blocktest));
-        status=1;
-    }
-    else
-    {
-       LOG_D("INMA.CFG read failure");
-       status=0;
+        eq_manag.eq[i].eq_addr=i+1;
     }
 
-    return status; //如果成功，返回0，如果不成功，返回对应的标志位
+    //使用文件操作的方式进行数据读出
+    LOG_D("Used Fopen to read file!!!");
+
+
+    //在配置页中前4个字符，用于放置第一次配置信息
+
+    //写测试
+    fd = open("/EQMA.CFG", O_WRONLY | O_CREAT);   /* 以创建和读写模式打开 /text.txt 文件，如果该文件不存在则创建该文件 */
+    if(fd>0)        //读文件成功
+    {
+        write(fd, &eq_manag, sizeof(eq_manag));
+        close(fd);
+        LOG_D("Used Fwrite to write %d bytes...",sizeof(eq_manag));
+    }
+
+    for(i=0;i<128;i++)storage_buff[i]=0;
+    rt_thread_mdelay(2000);
+
+    //读测试
+    fd = open("/EQMA.CFG", O_RDONLY);   /* 以只读模式打开 /text.txt 文件 */
+    if(fd>0)        //读文件成功
+    {
+        size = read(fd, storage_buff, 32);
+        close(fd);
+    }
+
+    LOG_D("fopen size:%d",size);
+
+    for(i=0;i<size;i++)
+     LOG_D("%d ",storage_buff[i]);
 }
 
-/*
+
+
+
+
 int Init_in_CFG(void)
 {
     int fd=0,size=0;
@@ -435,7 +456,7 @@ int Init_in_CFG(void)
     return status; //如果成功，返回0，如果不成功，返回对应的标志位
 }
 
-*/
+
 
 
 
