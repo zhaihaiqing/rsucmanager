@@ -24,8 +24,6 @@ typedef struct __attribute__ ((__packed__))
 /*  定义总线上所有的从设备    */
 typedef struct __attribute__ ((__packed__))
 {
-	unsigned short version;							//组件版本号
-	unsigned short  flag;                           //标志位，用于判断配置表是否初始化过
     unsigned char eq_num;						    //总线从机数量
 	signel_eq_manag_type eq[RSUC_BUS_MAX_DEVICE];	//为每个从设备分配一个属性
 }eq_manag_type;

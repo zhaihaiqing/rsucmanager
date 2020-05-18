@@ -35,15 +35,15 @@ typedef struct __attribute__ ((__packed__))
     uint8_t  dat[16];						//每个消息最长64字节
 }rsuc_inside_dat_type;
 
-/* 定义结构体，组件返回消息 */
-typedef struct __attribute__ ((__packed__))
-{
-	uint8_t  src;							//消息源
-	uint8_t	 mq_type;
-	uint8_t  is_mq_success;
-	uint8_t  d_len;                         //返回的数据长度
-	uint8_t	 *dp;
-}rsuc_output_dat_type;
+// /* 定义结构体，组件返回消息 */
+// typedef struct __attribute__ ((__packed__))
+// {
+// 	uint8_t  src;							//消息源
+// 	uint8_t	 mq_type;						//指令类型
+// 	uint8_t  is_mq_success;					//0成功，错误代码请查看错误规范
+// 	uint8_t  d_len;                         //返回的数据长度
+// 	uint8_t	 *dp;							//返回的数据指针
+// }rsuc_output_dat_type;
 
 
 //第三层：向源组件返回消息
