@@ -40,7 +40,12 @@ uint16_t Modbus_CRC16_Check(uint8_t *Pushdata,uint8_t length)
 
 void down_uart_send_dat(unsigned char *dat,unsigned short len)
 {
+    uint8_t i=0;
     rsuc_RS485_TX();
+    rt_kprintf("down_uart_send_dat:\r\n"); 
+    for(i=0;i<len;i++)
+        rt_kprintf("0x%x " ,*(dat+i));
+    rt_kprintf("\r\n");    
     rt_device_write(down_serial,0,dat,len);
     rsuc_RS485_RX();
 }

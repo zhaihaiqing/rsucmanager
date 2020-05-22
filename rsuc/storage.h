@@ -10,7 +10,7 @@
 
 #define RSUC_CFG_READ_WAIT_TIME (1000)
 
-#define RSUC_BUS_MAX_DEVICE     128             //总线上支持的从机设备数量
+#define RSUC_BUS_MAX_DEVICE     247             //总线上支持的从机设备数量
 /*  定义单个节点属性列表，单台设备共有4种属性    */
 typedef struct __attribute__ ((__packed__))
 {

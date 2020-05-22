@@ -12,7 +12,7 @@ CP_CTL_STRU rsuc_ctl={0,RT_NULL,RSUC_CPID,0}; //CPNAME组件控制体
 CP_REG_STRU rsuc_reg={RT_NULL,RSUC_CPID}; //用于CPNAME组件向主管道注册
 
 struct rt_thread rthread_msg_pro; //CPNAME消息处理进程结构体
-unsigned char thread_msg_pro_stack[THREAD_STACK_SIZE];
+unsigned char thread_msg_pro_stack[3072];
 struct rt_thread rthread_register; //CPNAME组件注册进程结构体
 unsigned char thread_register_stack[THREAD_STACK_SIZE];
 
@@ -104,7 +104,7 @@ void RSUC_msg_pro_entry(void *p) //CPNAME组件消息处理进程
                 rsuc_input_dat.d_src=rsuc_gms.d_src;                //获取消息源组件号
                 rsuc_input_dat.d_len=rsuc_gms.d_dl;                 //获取数据（纯数据区）长度
                 rsuc_input_dat.dat[0]=rsuc_gms.d_cmd.cmd;           //获取指令码
-                rt_memcpy(&rsuc_input_dat.dat[1],(uint8_t *)rsuc_gms.d_p,rsuc_input_dat.d_len);//获取数据
+                rt_memcpy(&rsuc_input_dat.dat[1],(uint8_t *)rsuc_gms.d_p+1,rsuc_input_dat.d_len-1);//获取数据
                 
                 LOG_D("rsuc:d_src:%d,d_len:%d,mq_type:%d,dat[1]:%d,dat[2]:%d,dat[3]:%d",rsuc_input_dat.d_src,rsuc_input_dat.d_len,rsuc_input_dat.dat[0],rsuc_input_dat.dat[1],rsuc_input_dat.dat[2],rsuc_input_dat.dat[3]);
 

@@ -9,14 +9,14 @@
 
 /*******    串口接收线程    ******/
 struct rt_thread rthread_downstream;
-unsigned char rthread_downstream_stack[THREAD_STACK_SIZE];
+unsigned char rthread_downstream_stack[1024];
 unsigned char downstream_THREAD_PRIORITY = 20;
 
 /*******    总线设备访问线程    ******/
 //1：等待业务组件发送的消息，对消息进行处理，访问下层设备
 //2：等待串口接收线程的信号量，解析数据，发送给业务组件
 struct rt_thread rthread_busdevice_access;
-unsigned char rthread_busdevice_access_stack[THREAD_STACK_SIZE];
+unsigned char rthread_busdevice_access_stack[2048];
 unsigned char busdevice_access_THREAD_PRIORITY = 21;
 
 struct rt_semaphore down_rx_sem;
@@ -85,7 +85,7 @@ int down_usart_init(void)
     rt_device_set_rx_indicate(down_serial, down_uart_rx_ind);
 
     /*发送测试字符*/
-    down_uart_send_dat(str, (sizeof(str) - 1));
+    //down_uart_send_dat(str, (sizeof(str) - 1));
 
     //创建串口数据接收线程
     rt_thread_init(&rthread_downstream,
@@ -172,6 +172,8 @@ int rsuc_eq_access_thread_entry(void *p)
         {
             LOG_D("rt_mq_recv");
 
+            // LOG_D("rsuc_dat_buf.d_src：%d", rsuc_dat_buf.d_src);
+            // LOG_D("rsuc_dat_buf.d_len：%d", rsuc_dat_buf.d_len);
             // LOG_D("rsuc_dat_buf.dat[0]：%d", rsuc_dat_buf.dat[0]);
             // LOG_D("rsuc_dat_buf.dat[1]：%d", rsuc_dat_buf.dat[1]);
             // LOG_D("rsuc_dat_buf.dat[2]：%d", rsuc_dat_buf.dat[2]);
@@ -179,16 +181,22 @@ int rsuc_eq_access_thread_entry(void *p)
             // LOG_D("rsuc_dat_buf.dat[4]：%d", rsuc_dat_buf.dat[4]);
             // LOG_D("rsuc_dat_buf.dat[5]：%d", rsuc_dat_buf.dat[5]);
             // LOG_D("rsuc_dat_buf.dat[6]：%d", rsuc_dat_buf.dat[6]);
+            // LOG_D("rsuc_dat_buf.dat[7]：%d", rsuc_dat_buf.dat[7]);
+            // LOG_D("rsuc_dat_buf.dat[8]：%d", rsuc_dat_buf.dat[8]);
+            // LOG_D("rsuc_dat_buf.dat[9]：%d", rsuc_dat_buf.dat[9]);
+            // LOG_D("rsuc_dat_buf.dat[10]：%d", rsuc_dat_buf.dat[10]);
+            // LOG_D("rsuc_dat_buf.dat[11]：%d", rsuc_dat_buf.dat[11]);
+            // LOG_D("rsuc_dat_buf.dat[12]：%d", rsuc_dat_buf.dat[12]);
 
             
 
             if ((rsuc_dat_buf.dat[0] >= 1) && (rsuc_dat_buf.dat[0] <= 4))
             {
-                err = manager_eq(rsuc_dat_buf.d_src, rsuc_dat_buf.dat[0], rsuc_dat_buf.dat[3], rsuc_dat_buf.dat[4], rsuc_dat_buf.dat[5], rsuc_dat_buf.dat[6]); //如果成功，在函数内部直接向源组件发送消息，如果失败，则返回错误代码
+                err = manager_eq(rsuc_dat_buf.d_src, rsuc_dat_buf.dat[0], rsuc_dat_buf.dat[2], rsuc_dat_buf.dat[3], rsuc_dat_buf.dat[4], rsuc_dat_buf.dat[5]); //如果成功，在函数内部直接向源组件发送消息，如果失败，则返回错误代码
             }
-            else if ((rsuc_dat_buf.dat[0] >= 9) && (rsuc_dat_buf.dat[0] <= 12))
+            else if ((rsuc_dat_buf.dat[0] >= 9) && (rsuc_dat_buf.dat[0] <= 13))
             {
-                err = rsuc_sub_sample(rsuc_dat_buf.d_src, rsuc_dat_buf.dat[0], rsuc_dat_buf.dat[2], &rsuc_dat_buf.dat[2], rsuc_dat_buf.d_len - 1); //如果成功，在函数内部直接向源组件发送消息，如果失败，则返回错误代码
+                err = rsuc_sub_sample(rsuc_dat_buf.d_src, rsuc_dat_buf.dat[0], rsuc_dat_buf.dat[2], &rsuc_dat_buf.dat[2], rsuc_dat_buf.d_len - 2); //如果成功，在函数内部直接向源组件发送消息，如果失败，则返回错误代码
             }
             else
             {

@@ -1,7 +1,7 @@
 ﻿#include "rsucmanager.h"
 #include <unistd.h>
 
-unsigned char storage_buff[128] = {0}; //定义测试buf
+unsigned char storage_buff[RSUC_BUS_MAX_DEVICE] = {0}; //定义测试buf
 
 eq_manag_type eq_manag; //定义所有的总线设备管理表，组件启动后，读取该表到内存中
 //in_manag_type   eq_in_block;    //定义单台设备的指令块，RSUC接收到业务组件消息后，根据访问设备的类型，将该设备的指令块读入到内存中（指令表可能比较大，无法完全读入到内存中）
@@ -150,7 +150,8 @@ int Check_in_CFG(void)
  *        5：该地址对应的分组号
  * 
  ****************************************************/
-uint8_t eq_manag_temp[0]={0};
+uint8_t eq_manag_temp1[0]={0};
+uint8_t eq_manag_temp2[0]={0};
 int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8_t par, uint8_t group)
 {
     int fd = 0, res = 0, size = 0;
@@ -162,7 +163,8 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
 
     LOG_D("d_src:%d,mq_type:%d,addr:%d,type:%d,par:%d,gro:%d", d_src, mq_type, addr, type, par, group);
 
-    rt_memset(eq_manag_temp,0,4);
+    rt_memset(eq_manag_temp1,0,4);
+    rt_memset(eq_manag_temp2,0,4);
 
     //参数合法性检查
     if (!is_eq_table_presence)
@@ -176,6 +178,12 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
         if (fd > 0)                     //如果成功
         {
             //size = read(fd, &eq_manag, sizeof(eq_manag)); //读出数据
+
+            eq_manag_temp1[0] = eq_manag.eq[addr - 1].eq_addr;
+            eq_manag_temp1[1] = eq_manag.eq[addr - 1].eq_type;
+            eq_manag_temp1[2] = eq_manag.eq[addr - 1].eq_par;
+            eq_manag_temp1[3] = eq_manag.eq[addr - 1].eq_group;
+
             if (mq_type == 1) //增加设备
             {
                 //首先判断新增的设备地址是否存在，否则返回错误
@@ -189,6 +197,13 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
                     //close(fd);
                     err = 0xE4;
                 } //  如果总线当前设备数量已满，返回错误（其实和地址判断是重复的）
+
+                if (type == 0)
+                {
+                    //close(fd);
+                    err = 0xEA;
+                } //  如果设备类型错误，返回错误
+
                 if (err == 0)
                 {
                     eq_manag.eq_num++;
@@ -197,6 +212,12 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
                     eq_manag.eq[addr - 1].eq_par = par;
                     eq_manag.eq[addr - 1].eq_group = group;
                     write(fd, &eq_manag, sizeof(eq_manag));
+
+                    eq_manag_temp2[0] = eq_manag.eq[addr - 1].eq_addr;
+                    eq_manag_temp2[1] = eq_manag.eq[addr - 1].eq_type;
+                    eq_manag_temp2[2] = eq_manag.eq[addr - 1].eq_par;
+                    eq_manag_temp2[3] = eq_manag.eq[addr - 1].eq_group;
+
                     LOG_D("Add eq Ok,add:%d", addr);
                 }
                 else
@@ -225,6 +246,11 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
                     eq_manag.eq[addr - 1].eq_par = 0;
                     eq_manag.eq[addr - 1].eq_group = 0;
                     write(fd, &eq_manag, sizeof(eq_manag));
+
+                    eq_manag_temp2[0] = eq_manag.eq[addr - 1].eq_addr;
+                    eq_manag_temp2[1] = eq_manag.eq[addr - 1].eq_type;
+                    eq_manag_temp2[2] = eq_manag.eq[addr - 1].eq_par;
+                    eq_manag_temp2[3] = eq_manag.eq[addr - 1].eq_group;
                     LOG_D("Delte eq Ok,add:%d", addr);
                 }
                 else
@@ -236,11 +262,18 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
             else if (mq_type == 3) //修改设备
             {
                 //首先判断新增的设备地址是否存在，否则返回错误
-                if (eq_manag.eq[addr - 1].eq_addr == 0)
+                if ( (eq_manag.eq[addr - 1].eq_addr == 0) )
                 {
                     //close(fd);
                     err = 0xE7;
                 } //  如果新增的地址已经存在，返回错误（地址根据对应的号放入），数组下标从0开始
+
+                if (type == 0)
+                {
+                    //close(fd);
+                    err = 0xEA;
+                } //  如果设备类型错误，返回错误
+
                 if (err == 0)
                 {
                     eq_manag.eq[addr - 1].eq_addr = addr;
@@ -249,6 +282,12 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
                     eq_manag.eq[addr - 1].eq_group = group;
 
                     write(fd, &eq_manag, sizeof(eq_manag));
+
+                    eq_manag_temp2[0] = eq_manag.eq[addr - 1].eq_addr;
+                    eq_manag_temp2[1] = eq_manag.eq[addr - 1].eq_type;
+                    eq_manag_temp2[2] = eq_manag.eq[addr - 1].eq_par;
+                    eq_manag_temp2[3] = eq_manag.eq[addr - 1].eq_group;
+
                     LOG_D("Modify eq Ok,add:%d", addr);
                 }
                 else
@@ -265,10 +304,10 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
                 }
                 if (err == 0)
                 {
-                    eq_manag_temp[0] = eq_manag.eq[addr - 1].eq_addr;
-                    eq_manag_temp[1] = eq_manag.eq[addr - 1].eq_type;
-                    eq_manag_temp[2] = eq_manag.eq[addr - 1].eq_par;
-                    eq_manag_temp[3] = eq_manag.eq[addr - 1].eq_group;
+                    eq_manag_temp2[0] = eq_manag.eq[addr - 1].eq_addr;
+                    eq_manag_temp2[1] = eq_manag.eq[addr - 1].eq_type;
+                    eq_manag_temp2[2] = eq_manag.eq[addr - 1].eq_par;
+                    eq_manag_temp2[3] = eq_manag.eq[addr - 1].eq_group;
                 }
                 else
                 {
@@ -277,19 +316,24 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
             }
             close(fd);
         }
+        else
+        {
+            err = 0xE9;
+        }
+        
 
         show_eq_manag();
     }
 
     rsuc_output_dat.src = d_src;
-    rsuc_output_dat.eq_addr = 0;
-    rsuc_output_dat.eq_type = 0;
-    rsuc_output_dat.eq_par = 0;
-    rsuc_output_dat.eq_gro = 0;
+    rsuc_output_dat.eq_addr = eq_manag_temp1[0];
+    rsuc_output_dat.eq_type = eq_manag_temp1[1];
+    rsuc_output_dat.eq_par = eq_manag_temp1[2];
+    rsuc_output_dat.eq_gro = eq_manag_temp1[3];
     rsuc_output_dat.mq_type = mq_type;
     rsuc_output_dat.is_mq_success = err;
     rsuc_output_dat.d_len = 4;
-    rsuc_output_dat.dp = &eq_manag_temp[0];
+    rsuc_output_dat.dp = &eq_manag_temp2[0];
     //发送数据
     rt_memset(&rsuc_tmp_dmgms, 0, sizeof(DM_GMS_STRU));
     mb_make_dmgms(&rsuc_tmp_dmgms, 0, &sem_rsuc, CP_CMD_SRC(mq_type), d_src, RSUC_CPID, (uint8_t *)&rsuc_output_dat, sizeof(rsuc_output_dat), &rsuc_resp_data); //向多维消息体中装入消息
