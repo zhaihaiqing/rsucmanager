@@ -15,6 +15,8 @@
 
 //#define RSUC_DEBUG
 
+//#define sprs_led_debug
+
 //注:将CPNAME替换为实际mapp名，形如UTCM STOM
 
 #define RSUC_VERSION    0x400

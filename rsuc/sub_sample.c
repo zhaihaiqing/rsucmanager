@@ -1,7 +1,7 @@
 ﻿#include "rsucmanager.h"
 #include <unistd.h>
 
-#define LOG_TAG "RSUC_SUB"
+#define LOG_TAG "SPRS_SUB"
 #define LOG_LVL LOG_LVL_DBG
 #include <ulog.h>
 
@@ -133,7 +133,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
         eq_in_block.eq_in[0].in[eq_in_block.eq_in[0].in_len - 1] = crc16 >> 8;
         eq_timeout = eq_in_block.eq_res_time;
 
-        LOG_D("rsuc send in0:");
+        LOG_D("sprs send in0:");
         for (i = 0; i < eq_in_block.eq_in[0].in_len; i++)
         {
             rt_kprintf("0x%02x ", eq_in_block.eq_in[0].in[i]);
@@ -152,7 +152,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
                 rt_memcpy(&rsuc_output_eq_buf[0], &down_rx_buff.dat[0], rx_len);
                 crc16 = Modbus_CRC16_Check(rsuc_output_eq_buf, rx_len - 2);
 
-                LOG_D("rsuc receive dat:");
+                LOG_D("sprs receive dat:");
                 for (i = 0; i < rx_len; i++)
                 {
                     rt_kprintf("0x%02x ", rsuc_output_eq_buf[i]);
@@ -208,7 +208,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
             eq_in_block.eq_in[1].in[eq_in_block.eq_in[1].in_len - 1] = crc16 >> 8;
             eq_timeout = eq_in_block.eq_res_time;
 
-            LOG_D("rsuc send in1:");
+            LOG_D("sprs send in1:");
             for (i = 0; i < eq_in_block.eq_in[1].in_len; i++)
             {
                 rt_kprintf("0x%02x ", eq_in_block.eq_in[1].in[i]);
@@ -227,7 +227,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
                     rt_memcpy(&rsuc_output_eq_buf[0], &down_rx_buff.dat[0], rx_len);
                     crc16 = Modbus_CRC16_Check(rsuc_output_eq_buf, rx_len - 2);
 
-                    LOG_D("rsuc receive dat:", crc16);
+                    LOG_D("sprs receive dat:", crc16);
                     for (i = 0; i < rx_len; i++)
                     {
                         rt_kprintf("0x%02x ", rsuc_output_eq_buf[i]);
@@ -284,7 +284,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
         eq_in_block.eq_in[2].in[eq_in_block.eq_in[2].in_len - 1] = crc16 >> 8;
         eq_timeout = eq_in_block.eq_res_time;
 
-        LOG_D("rsuc send in2:");
+        LOG_D("sprs send in2:");
         for (i = 0; i < eq_in_block.eq_in[2].in_len; i++)
         {
             rt_kprintf("0x%02x ", eq_in_block.eq_in[2].in[i]);
@@ -305,7 +305,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
                 rt_memcpy(&rsuc_output_eq_buf[0], &down_rx_buff.dat[0], rx_len);
                 crc16 = Modbus_CRC16_Check(&rsuc_output_eq_buf[0], rx_len - 2);
 
-                LOG_D("rsuc receive dat:", crc16);
+                LOG_D("sprs receive dat:", crc16);
                 for (i = 0; i < rx_len; i++)
                 {
                     rt_kprintf("0x%02x ", rsuc_output_eq_buf[i]);
@@ -374,7 +374,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
                 rt_memcpy(&rsuc_output_eq_buf[0], &down_rx_buff.dat[0], rx_len);
                 crc16 = Modbus_CRC16_Check(rsuc_output_eq_buf, rx_len - 2);
 
-                rt_kprintf("rsuc receive dat:\r\n", crc16);
+                rt_kprintf("sprs receive dat:\r\n", crc16);
                 for (i = 0; i < rx_len; i++)
                 {
                     rt_kprintf("0x%02x ", rsuc_output_eq_buf[i]);
@@ -430,7 +430,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
             //for(i=0;i<rx_len;i++)rsuc_output_eq_buf[i]=down_rx_buff.dat[i];//获取串口数据
             rt_memcpy(&rsuc_output_eq_buf[0], &down_rx_buff.dat[0], rx_len);
 
-            rt_kprintf("rsuc receive dat:\r\n", crc16);
+            rt_kprintf("sprs receive dat:\r\n", crc16);
             for (i = 0; i < rx_len; i++)
             {
                 rt_kprintf("0x%02x ", rsuc_output_eq_buf[i]);

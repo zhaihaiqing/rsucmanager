@@ -1,6 +1,6 @@
 ﻿#include "rsucmanager.h"
 
-#define LOG_TAG "RSUC_PRO"
+#define LOG_TAG "SPRS_PRO"
 #define LOG_LVL LOG_LVL_DBG
 #include <ulog.h>
 
@@ -16,7 +16,7 @@ unsigned char downstream_THREAD_PRIORITY = 20;
 //1：等待业务组件发送的消息，对消息进行处理，访问下层设备
 //2：等待串口接收线程的信号量，解析数据，发送给业务组件
 struct rt_thread rthread_busdevice_access;
-unsigned char rthread_busdevice_access_stack[2048];
+unsigned char rthread_busdevice_access_stack[3072];
 unsigned char busdevice_access_THREAD_PRIORITY = 21;
 
 struct rt_semaphore down_rx_sem;
@@ -113,10 +113,14 @@ int down_usart_init(void)
 
 void rsuc_GPIO_init(void)
 {
+#ifdef  sprs_led_debug
     rt_pin_mode(LED1_PIN_NUM, PIN_MODE_OUTPUT);      //初始化LED灯
+#endif
     rt_pin_mode(M_EN_PIN_NUM, PIN_MODE_OUTPUT);      //初始化模块电源
     rt_pin_mode(RS485_TRX_PIN_NUM, PIN_MODE_OUTPUT); //初始化RS485方向控制引脚
+#ifdef  sprs_led_debug
     LED1_OFF();
+#endif
     rsuc_MPOW_EN_ON();
     rsuc_RS485_RX();
 }
@@ -133,7 +137,7 @@ int rsuc_eq_access_thread_entry(void *p)
     DM_GMS_STRU rsuc_dat_dmgms;
     GMS_STRU rsuc_gms; //主管道信息,用于解析
 
-    LOG_D("rsuc_eq_access_thread_entry");
+    LOG_D("sprs_eq_access_thread_entry");
     //#ifdef RSUC_DEBUG
 
     // rsuc_sub_sample(9,10,1,&temp,1);//查询配置-1

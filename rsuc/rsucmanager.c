@@ -1,6 +1,6 @@
 ﻿#include "rsucmanager.h"
 
-#define LOG_TAG     "RSUC_MANA"    
+#define LOG_TAG     "SPRS_MANA"    
 #define LOG_LVL     LOG_LVL_DBG
 #include <ulog.h>
 
@@ -90,7 +90,7 @@ void RSUC_msg_pro_entry(void *p) //CPNAME组件消息处理进程
     {
         if(rt_mq_recv(&rsuc_pipe,&rsuc_gms,sizeof(GMS_STRU),RT_WAITING_FOREVER)==RT_EOK) //从cpname_pipe获取消息，等待模式
         {
-            LOG_D("rsuc:msg recved");
+            LOG_D("SPRS:msg recved");
 
             if(rsuc_gms.d_cmd.is_src_cmd == 1)//使用源的指令解析
             {
@@ -106,7 +106,7 @@ void RSUC_msg_pro_entry(void *p) //CPNAME组件消息处理进程
                 rsuc_input_dat.dat[0]=rsuc_gms.d_cmd.cmd;           //获取指令码
                 rt_memcpy(&rsuc_input_dat.dat[1],(uint8_t *)rsuc_gms.d_p+1,rsuc_input_dat.d_len-1);//获取数据
                 
-                LOG_D("rsuc:d_src:%d,d_len:%d,mq_type:%d,dat[1]:%d,dat[2]:%d,dat[3]:%d",rsuc_input_dat.d_src,rsuc_input_dat.d_len,rsuc_input_dat.dat[0],rsuc_input_dat.dat[1],rsuc_input_dat.dat[2],rsuc_input_dat.dat[3]);
+                LOG_D("SPRS:d_src:%d,d_len:%d,mq_type:%d,dat[1]:%d,dat[2]:%d,dat[3]:%d",rsuc_input_dat.d_src,rsuc_input_dat.d_len,rsuc_input_dat.dat[0],rsuc_input_dat.dat[1],rsuc_input_dat.dat[2],rsuc_input_dat.dat[3]);
 
                 rt_mq_send(&rsuc_input_dat_mq, &rsuc_input_dat, sizeof(rsuc_input_dat)); //第二层：向任务处理线程发送消息队列
 
