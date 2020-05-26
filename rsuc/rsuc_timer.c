@@ -4,7 +4,7 @@
 static struct rt_timer sprs_timer1; //控制串口帧
 
 #ifdef sprs_led_debug
-static struct rt_timer timer2; //控制主板LED灯
+static struct rt_timer sprs_timer2; //控制主板LED灯
 #endif
 
 /* 定时器1 超时函数,每2个OS节拍中断一次*/
@@ -26,7 +26,7 @@ void sprs_timeout1(void *parameter)
 /* 定时器2 超时函数,每10个OS节拍中断一次*/
 #ifdef sprs_led_debug
 static unsigned int timeout2_count;
-void timeout2(void *parameter)
+void sprs_timeout2(void *parameter)
 {
     timeout2_count++;
     if (timeout2_count == 130)

@@ -15,7 +15,7 @@
 
 //#define RSUC_DEBUG
 
-//#define sprs_led_debug
+#define sprs_led_debug
 
 //注:将CPNAME替换为实际mapp名，形如UTCM STOM
 
@@ -68,6 +68,10 @@ extern GMS_STRU rsuc_gms; //主管道信息,用于解析
 
 extern struct rt_messagequeue rsuc_input_dat_mq;  //定义主线程与数据处理函数的消息队列
 extern struct rt_semaphore sem_rsuc_sample_pro; 
+
+extern	uint8_t is_cfg_table_presence; 
+extern	uint8_t is_eq_table_presence; 
+extern	uint8_t is_in_table_presence; 
 
 
 #endif

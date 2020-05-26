@@ -1,5 +1,13 @@
 ﻿#include "rsucmanager.h"
 #include <unistd.h>
+#include "minini.h"
+#include "dfs_fs.h"
+
+#define LOG_TAG "SPRS_STO"
+#define LOG_LVL LOG_LVL_DBG
+#include <ulog.h>
+
+#define SPRS_CFG_FILENAME "/SPRS.INI"
 
 unsigned char storage_buff[RSUC_BUS_MAX_DEVICE] = {0}; //定义测试buf
 
@@ -37,6 +45,89 @@ int show_eq_manag(void)
     {
         rt_kprintf("[%d]:addr:%d,type:%d,par:%d,gro:%d\r\n", i, eq_manag2.eq[i].eq_addr, eq_manag2.eq[i].eq_type, eq_manag2.eq[i].eq_par, eq_manag2.eq[i].eq_group);
     }
+}
+
+/*****************************************************
+ * 初始化指令表，检查指令表是否存在，不存在则返回错误
+ * 
+ * 
+ * 
+ ****************************************************/
+int Check_sprs_cfg(void)
+{
+    int res = 0, status = 0;
+    struct stat stat_buf;
+    uint8_t err = 0;
+
+    res = stat(SPRS_CFG_FILENAME, &stat_buf); //获取串口配置文件信息
+    if (res == 0)                             //获取文件信息成功
+    {
+        //LOG_D("SPRS.INI read info OK,ALL_IN_size:%d", stat_buf.st_size);
+        status = 1;
+        sprs_uart_cfg.buad = ini_getl("portcfg", "buad", 0, SPRS_CFG_FILENAME);
+        sprs_uart_cfg.databits = ini_getl("portcfg", "databits", 0, SPRS_CFG_FILENAME);
+        sprs_uart_cfg.stopbits = ini_getl("portcfg", "stopbits", 0, SPRS_CFG_FILENAME);
+        sprs_uart_cfg.bufsize = ini_getl("portcfg", "bufsize", 0, SPRS_CFG_FILENAME);
+        sprs_uart_cfg.parity = ini_getl("portcfg", "parity", 0, SPRS_CFG_FILENAME);
+
+        if (!((sprs_uart_cfg.buad == 2400) || (sprs_uart_cfg.buad == 4800) || (sprs_uart_cfg.buad == 9600) || (sprs_uart_cfg.buad == 19200) ||
+              (sprs_uart_cfg.buad == 38400) || (sprs_uart_cfg.buad == 57600) || (sprs_uart_cfg.buad == 115200)))
+        {
+            err |= 0x01;
+        }
+
+        if (!((sprs_uart_cfg.databits == 5) || (sprs_uart_cfg.databits == 6) || (sprs_uart_cfg.databits == 7) || (sprs_uart_cfg.databits == 8) ||
+              (sprs_uart_cfg.databits == 9)))
+        {
+            err |= 0x02;
+        }
+
+        if (!((sprs_uart_cfg.stopbits == 1) || (sprs_uart_cfg.stopbits == 2) || (sprs_uart_cfg.stopbits == 3) || (sprs_uart_cfg.stopbits == 4)))
+        {
+            err |= 0x04;
+        }
+        sprs_uart_cfg.stopbits -=1;
+
+        if (((sprs_uart_cfg.bufsize < 32) || (sprs_uart_cfg.bufsize > 512)))
+        {
+            err |= 0x08;
+        }
+
+        if (!((sprs_uart_cfg.parity == 0) || (sprs_uart_cfg.parity == 1) || (sprs_uart_cfg.parity == 2)))
+        {
+            err |= 0x10;
+        }
+
+        // LOG_D("sprs_uart_cfg.buad:%d", sprs_uart_cfg.buad);
+        // LOG_D("sprs_uart_cfg.databits:%d", sprs_uart_cfg.databits);
+        // LOG_D("sprs_uart_cfg.stopbits:%d", sprs_uart_cfg.stopbits);
+        // LOG_D("sprs_uart_cfg.bufsize:%d", sprs_uart_cfg.bufsize);
+        // LOG_D("sprs_uart_cfg.parity:%d", sprs_uart_cfg.parity);
+    }
+    else
+    {
+        err |= 0x20;
+    }
+
+    if (err != 0)
+    {
+        //LOG_D("SPRS.INI read failure");
+        status = 0;
+        sprs_uart_cfg.buad = BAUD_RATE_9600;
+        sprs_uart_cfg.databits = DATA_BITS_8;
+        sprs_uart_cfg.stopbits = STOP_BITS_1;
+        sprs_uart_cfg.bufsize = 256;
+        sprs_uart_cfg.parity = 0;
+    }
+
+    LOG_D("SPRS.INI read,status=%d,err=%d",status,err);
+    LOG_D("sprs_uart_cfg.buad:%d", sprs_uart_cfg.buad);
+    LOG_D("sprs_uart_cfg.databits:%d", sprs_uart_cfg.databits);
+    LOG_D("sprs_uart_cfg.stopbits:%d", sprs_uart_cfg.stopbits);
+    LOG_D("sprs_uart_cfg.bufsize:%d", sprs_uart_cfg.bufsize);
+    LOG_D("sprs_uart_cfg.parity:%d", sprs_uart_cfg.parity);
+
+    return status; //如果成功，返回0，如果不成功，返回对应的标志位
 }
 
 /*****************************************************
@@ -124,12 +215,12 @@ int Check_in_CFG(void)
     int fd = 0, size = 0;
     int res = 0, status = 0;
     struct stat stat_buf;
-    in_manag_type eq_in_blocktest = {0};
+    //in_manag_type eq_in_blocktest = {0};
 
     res = stat("/INMA.CFG", &stat_buf); //获取文件信息
     if (res == 0)                       //获取文件信息成功
     {
-        LOG_D("INMA.CFG read info OK,ALL_IN_size:%d,eq_in_size", stat_buf.st_size, sizeof(eq_in_blocktest));
+        LOG_D("INMA.CFG read info OK,ALL_IN_size:%d", stat_buf.st_size);
         status = 1;
     }
     else
@@ -150,8 +241,8 @@ int Check_in_CFG(void)
  *        5：该地址对应的分组号
  * 
  ****************************************************/
-uint8_t eq_manag_temp1[0]={0};
-uint8_t eq_manag_temp2[0]={0};
+uint8_t eq_manag_temp1[0] = {0};
+uint8_t eq_manag_temp2[0] = {0};
 int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8_t par, uint8_t group)
 {
     int fd = 0, res = 0, size = 0;
@@ -163,8 +254,8 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
 
     LOG_D("d_src:%d,mq_type:%d,addr:%d,type:%d,par:%d,gro:%d", d_src, mq_type, addr, type, par, group);
 
-    rt_memset(eq_manag_temp1,0,4);
-    rt_memset(eq_manag_temp2,0,4);
+    rt_memset(eq_manag_temp1, 0, 4);
+    rt_memset(eq_manag_temp2, 0, 4);
 
     //参数合法性检查
     if (!is_eq_table_presence)
@@ -262,7 +353,7 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
             else if (mq_type == 3) //修改设备
             {
                 //首先判断新增的设备地址是否存在，否则返回错误
-                if ( (eq_manag.eq[addr - 1].eq_addr == 0) )
+                if ((eq_manag.eq[addr - 1].eq_addr == 0))
                 {
                     //close(fd);
                     err = 0xE7;
@@ -320,7 +411,6 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
         {
             err = 0xE9;
         }
-        
 
         show_eq_manag();
     }

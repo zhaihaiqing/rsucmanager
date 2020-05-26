@@ -77,4 +77,6 @@ int manager_eq(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t type,uint8_t p
 int mk_eqin_dir(void);
 int Check_in_CFG(void);
 
+int Check_sprs_cfg(void);
+
  #endif
