@@ -34,7 +34,7 @@ int Rsuc_Send_Msg(DM_GMS_STRU *dat)
         if (RT_EOK == rt_sem_take(&sem_rsuc, RSUC_REG_SEM_WAIT_TIME))
         {
             rt_sem_detach(&sem_rsuc); //脱离信号量
-            LOG_D("dm_gms:%d,r_src:%d,r_res:%d", dat->dm_gms[0].d_des, rsuc_resp_data.r_src, rsuc_resp_data.r_res);
+            //LOG_D("dm_gms:%d,r_src:%d,r_res:%d", dat->dm_gms[0].d_des, rsuc_resp_data.r_src, rsuc_resp_data.r_res);
             if (dat->dm_gms[0].d_des == rsuc_resp_data.r_src && 0 == rsuc_resp_data.r_res)
                 return RT_EOK;
             else
@@ -139,7 +139,7 @@ int rsuc_eq_access_thread_entry(void *p)
     DM_GMS_STRU rsuc_dat_dmgms;
     GMS_STRU rsuc_gms; //主管道信息,用于解析
 
-    LOG_D("sprs_eq_access_thread_entry");
+    LOG_D("sprs_eq_access_thread_entry startup");
     //#ifdef RSUC_DEBUG
 
     // rsuc_sub_sample(9,10,1,&temp,1);//查询配置-1
@@ -176,7 +176,7 @@ int rsuc_eq_access_thread_entry(void *p)
         rt_memset(&rsuc_dat_buf, 0, sizeof(rsuc_dat_buf));                                                     //清零缓冲区
         if (rt_mq_recv(&rsuc_input_dat_mq, &rsuc_dat_buf, sizeof(rsuc_dat_buf), RT_WAITING_FOREVER) == RT_EOK) //等待消息队列
         {
-            LOG_D("rt_mq_recv");
+            //LOG_D("rt_mq_recv");
 
             // LOG_D("rsuc_dat_buf.d_src：%d", rsuc_dat_buf.d_src);
             // LOG_D("rsuc_dat_buf.d_len：%d", rsuc_dat_buf.d_len);

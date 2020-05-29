@@ -69,20 +69,23 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
                 {
                     fd2 = lseek(fd1, (eq_type - 1) * sizeof(eq_in_block) + RSUC_IN_INDEX_SIZE, SEEK_SET); //移动指针
                     size = read(fd1, &eq_in_block, sizeof(eq_in_block));                                  //读出该设备的指令
-                    LOG_D("Read in success");
+                    //LOG_D("Read in success");
 
-                    LOG_D("fd1:%d,fd2:%d,size:%d", fd1, fd2, size);
-                    LOG_D("eq_type:%d,check_type:%d,res_time:%d,in_type:%d", eq_in_block.eq_type, eq_in_block.check_type, eq_in_block.eq_res_time, eq_in_block.eq_in_type);
+                    //LOG_D("fd1:%d,fd2:%d,size:%d", fd1, fd2, size);
+                    //LOG_D("eq_type:%d,check_type:%d,res_time:%d,in_type:%d", eq_in_block.eq_type, eq_in_block.check_type, eq_in_block.eq_res_time, eq_in_block.eq_in_type);
                     if (mq_type == GET_EQ_CFG_INFO)
-                        LOG_D("in0_len:%d,in0[0]:%d,in0[1]:%d,in0[2]:%d", eq_in_block.eq_in[0].in_len, eq_in_block.eq_in[0].in[0], eq_in_block.eq_in[0].in[1], eq_in_block.eq_in[0].in[2]);
+                        ;
+                        //LOG_D("in0_len:%d,in0[0]:%d,in0[1]:%d,in0[2]:%d", eq_in_block.eq_in[0].in_len, eq_in_block.eq_in[0].in[0], eq_in_block.eq_in[0].in[1], eq_in_block.eq_in[0].in[2]);
                     else if (mq_type == GET_EQ_GET_SDAT)
                     {
                         if (eq_in_block.eq_in_type)
-                            LOG_D("in1_len:%d,in1[0]:%d,in1[1]:%d,in1[2]:%d", eq_in_block.eq_in[1].in_len, eq_in_block.eq_in[1].in[0], eq_in_block.eq_in[1].in[1], eq_in_block.eq_in[1].in[2]);
-                        LOG_D("in2_len:%d,in2[0]:%d,in2[1]:%d,in2[2]:%d", eq_in_block.eq_in[2].in_len, eq_in_block.eq_in[2].in[0], eq_in_block.eq_in[2].in[1], eq_in_block.eq_in[2].in[2]);
+                            ;
+                            //LOG_D("in1_len:%d,in1[0]:%d,in1[1]:%d,in1[2]:%d", eq_in_block.eq_in[1].in_len, eq_in_block.eq_in[1].in[0], eq_in_block.eq_in[1].in[1], eq_in_block.eq_in[1].in[2]);
+                        //LOG_D("in2_len:%d,in2[0]:%d,in2[1]:%d,in2[2]:%d", eq_in_block.eq_in[2].in_len, eq_in_block.eq_in[2].in[0], eq_in_block.eq_in[2].in[1], eq_in_block.eq_in[2].in[2]);
                     }
                     else if (mq_type == EQ_CUSTOM_COMMAND)
-                        LOG_D("in3_len:%d,in3[0]:%d,in3[1]:%d,in3[2]:%d", eq_in_block.eq_in[3].in_len, eq_in_block.eq_in[3].in[0], eq_in_block.eq_in[3].in[1], eq_in_block.eq_in[3].in[2]);
+                        ;
+                        //LOG_D("in3_len:%d,in3[0]:%d,in3[1]:%d,in3[2]:%d", eq_in_block.eq_in[3].in_len, eq_in_block.eq_in[3].in[0], eq_in_block.eq_in[3].in[1], eq_in_block.eq_in[3].in[2]);
                 }
                 close(fd1);
             }
@@ -118,7 +121,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
         mb_make_dmgms(&rsuc_tmp_dmgms, 0, &sem_rsuc, CP_CMD_SRC(GET_EQ_INDEX_INFO), d_src, RSUC_CPID, (uint8_t *)&rsuc_output_dat, sizeof(rsuc_output_dat), &rsuc_resp_data); //向多维消息体中装入消息
         if (RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
         {
-            LOG_D("return param suc!");
+            //LOG_D("return param suc!");
         }
         else
         {
@@ -133,12 +136,12 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
         eq_in_block.eq_in[0].in[eq_in_block.eq_in[0].in_len - 1] = crc16 >> 8;
         eq_timeout = eq_in_block.eq_res_time;
 
-        LOG_D("sprs send in0:");
-        for (i = 0; i < eq_in_block.eq_in[0].in_len; i++)
-        {
-            rt_kprintf("0x%02x ", eq_in_block.eq_in[0].in[i]);
-        }
-        rt_kprintf("\r\n");
+        // LOG_D("sprs send in0:");
+        // for (i = 0; i < eq_in_block.eq_in[0].in_len; i++)
+        // {
+        //     rt_kprintf("0x%02x ", eq_in_block.eq_in[0].in[i]);
+        // }
+        // rt_kprintf("\r\n");
 
         if (err == 0)
         {
@@ -152,13 +155,13 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
                 rt_memcpy(&rsuc_output_eq_buf[0], &down_rx_buff.dat[0], rx_len);
                 crc16 = Modbus_CRC16_Check(rsuc_output_eq_buf, rx_len - 2);
 
-                LOG_D("sprs receive dat:");
-                for (i = 0; i < rx_len; i++)
-                {
-                    rt_kprintf("0x%02x ", rsuc_output_eq_buf[i]);
-                }
-                rt_kprintf(" rx_len:%d\r\n", rx_len);
-                rt_kprintf("crc16:0x%x\r\n", crc16);
+                // LOG_D("sprs receive dat:");
+                // for (i = 0; i < rx_len; i++)
+                // {
+                //     rt_kprintf("0x%02x ", rsuc_output_eq_buf[i]);
+                // }
+                // rt_kprintf(" rx_len:%d\r\n", rx_len);
+                // rt_kprintf("crc16:0x%x\r\n", crc16);
 
                 if ((rsuc_output_eq_buf[0] == addr) && (crc16 == ((rsuc_output_eq_buf[rx_len - 1] << 8) | rsuc_output_eq_buf[rx_len - 2]))) //对返回的数据进行地址+CRC判定
                 {
@@ -190,7 +193,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
         mb_make_dmgms(&rsuc_tmp_dmgms, 0, &sem_rsuc, CP_CMD_SRC(GET_EQ_CFG_INFO), d_src, RSUC_CPID, (uint8_t *)&rsuc_output_dat, sizeof(rsuc_output_dat), &rsuc_resp_data); //向多维消息体中装入消息
         if (RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
         {
-            LOG_D("return param suc!");
+            //LOG_D("return param suc!");
         }
         else
         {
@@ -199,7 +202,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
 
         break;
     case GET_EQ_GET_SDAT: //获取数据，判断单双指令
-        LOG_D("GET_EQ_GET_SDAT");
+        //LOG_D("GET_EQ_GET_SDAT");
         if (eq_in_block.eq_in_type == 1) //双指令，先发采样指令
         {
             eq_in_block.eq_in[1].in[0] = addr;
@@ -208,12 +211,12 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
             eq_in_block.eq_in[1].in[eq_in_block.eq_in[1].in_len - 1] = crc16 >> 8;
             eq_timeout = eq_in_block.eq_res_time;
 
-            LOG_D("sprs send in1:");
-            for (i = 0; i < eq_in_block.eq_in[1].in_len; i++)
-            {
-                rt_kprintf("0x%02x ", eq_in_block.eq_in[1].in[i]);
-            }
-            rt_kprintf("\r\n");
+            // LOG_D("sprs send in1:");
+            // for (i = 0; i < eq_in_block.eq_in[1].in_len; i++)
+            // {
+            //     rt_kprintf("0x%02x ", eq_in_block.eq_in[1].in[i]);
+            // }
+            // rt_kprintf("\r\n");
 
             if (err == 0)
             {
@@ -227,13 +230,13 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
                     rt_memcpy(&rsuc_output_eq_buf[0], &down_rx_buff.dat[0], rx_len);
                     crc16 = Modbus_CRC16_Check(rsuc_output_eq_buf, rx_len - 2);
 
-                    LOG_D("sprs receive dat:", crc16);
-                    for (i = 0; i < rx_len; i++)
-                    {
-                        rt_kprintf("0x%02x ", rsuc_output_eq_buf[i]);
-                    }
-                    rt_kprintf(" rx_len:%d\r\n", rx_len);
-                    rt_kprintf("crc16:0x%x\r\n", crc16);
+                    // LOG_D("sprs receive dat:", crc16);
+                    // for (i = 0; i < rx_len; i++)
+                    // {
+                    //     rt_kprintf("0x%02x ", rsuc_output_eq_buf[i]);
+                    // }
+                    // rt_kprintf(" rx_len:%d\r\n", rx_len);
+                    // rt_kprintf("crc16:0x%x\r\n", crc16);
 
                     if ((rsuc_output_eq_buf[0] == addr) && (crc16 == ((rsuc_output_eq_buf[rx_len - 1] << 8) | rsuc_output_eq_buf[rx_len - 2])))
                     {
@@ -252,7 +255,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
             if (err != 0)
             {
                 //向业务组件发送错误
-                LOG_D("In1 Nack,err:0x%x", err);
+                //LOG_D("In1 Nack,err:0x%x", err);
                 rsuc_output_dat.src = d_src;
                 rsuc_output_dat.eq_addr = addr;
                 rsuc_output_dat.eq_type = eq_type;
@@ -267,7 +270,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
                 mb_make_dmgms(&rsuc_tmp_dmgms, 0, &sem_rsuc, CP_CMD_SRC(GET_EQ_GET_SDAT), d_src, RSUC_CPID, (uint8_t *)&rsuc_output_dat, sizeof(rsuc_output_dat), &rsuc_resp_data); //向多维消息体中装入消息
                 if (RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
                 {
-                    LOG_D("return param suc!");
+                    //LOG_D("return param suc!");
                 }
                 else
                 {
@@ -284,12 +287,12 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
         eq_in_block.eq_in[2].in[eq_in_block.eq_in[2].in_len - 1] = crc16 >> 8;
         eq_timeout = eq_in_block.eq_res_time;
 
-        LOG_D("sprs send in2:");
-        for (i = 0; i < eq_in_block.eq_in[2].in_len; i++)
-        {
-            rt_kprintf("0x%02x ", eq_in_block.eq_in[2].in[i]);
-        }
-        rt_kprintf("\r\n");
+        // LOG_D("sprs send in2:");
+        // for (i = 0; i < eq_in_block.eq_in[2].in_len; i++)
+        // {
+        //     rt_kprintf("0x%02x ", eq_in_block.eq_in[2].in[i]);
+        // }
+        // rt_kprintf("\r\n");
 
         if (err == 0)
         {
@@ -305,14 +308,14 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
                 rt_memcpy(&rsuc_output_eq_buf[0], &down_rx_buff.dat[0], rx_len);
                 crc16 = Modbus_CRC16_Check(&rsuc_output_eq_buf[0], rx_len - 2);
 
-                LOG_D("sprs receive dat:", crc16);
-                for (i = 0; i < rx_len; i++)
-                {
-                    rt_kprintf("0x%02x ", rsuc_output_eq_buf[i]);
-                }
-                rt_kprintf(" rx_len:%d\r\n", rx_len);
+                // LOG_D("sprs receive dat:", crc16);
+                // for (i = 0; i < rx_len; i++)
+                // {
+                //     rt_kprintf("0x%02x ", rsuc_output_eq_buf[i]);
+                // }
+                // rt_kprintf(" rx_len:%d\r\n", rx_len);
 
-                rt_kprintf("crc16:0x%x\r\n", crc16);
+                // rt_kprintf("crc16:0x%x\r\n", crc16);
 
                 if ((rsuc_output_eq_buf[0] == addr) && (crc16 == ((rsuc_output_eq_buf[rx_len - 1] << 8) | rsuc_output_eq_buf[rx_len - 2]))) //对返回的数据进行地址+CRC判定
                 {
@@ -329,7 +332,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
             }
         }
 
-        LOG_D("err_info:0x%x，%d", err, sizeof(rsuc_output_dat));
+        //LOG_D("err_info:0x%x，%d", err, sizeof(rsuc_output_dat));
 
         //向业务组件发送消息
         rsuc_output_dat.src = d_src;
@@ -341,13 +344,13 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
         rsuc_output_dat.is_mq_success = err;
         rsuc_output_dat.d_len = rx_len;
         rsuc_output_dat.dp = &rsuc_output_eq_buf[0];
-        LOG_D("dp:0x%x", rsuc_output_dat.dp);
+        //LOG_D("dp:0x%x", rsuc_output_dat.dp);
         //发送数据
         rt_memset(&rsuc_tmp_dmgms, 0, sizeof(DM_GMS_STRU));
         mb_make_dmgms(&rsuc_tmp_dmgms, 0, &sem_rsuc, CP_CMD_SRC(GET_EQ_GET_SDAT), d_src, RSUC_CPID, (uint8_t *)&rsuc_output_dat, sizeof(rsuc_output_dat), &rsuc_resp_data); //向多维消息体中装入消息
         if (RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
         {
-            LOG_D("return param suc!");
+            //LOG_D("return param suc!");
         }
         else
         {
@@ -374,13 +377,13 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
                 rt_memcpy(&rsuc_output_eq_buf[0], &down_rx_buff.dat[0], rx_len);
                 crc16 = Modbus_CRC16_Check(rsuc_output_eq_buf, rx_len - 2);
 
-                rt_kprintf("sprs receive dat:\r\n", crc16);
-                for (i = 0; i < rx_len; i++)
-                {
-                    rt_kprintf("0x%02x ", rsuc_output_eq_buf[i]);
-                }
-                rt_kprintf(" rx_len:%d\r\n", rx_len);
-                rt_kprintf("crc16:0x%x\r\n", crc16);
+                // rt_kprintf("sprs receive dat:\r\n", crc16);
+                // for (i = 0; i < rx_len; i++)
+                // {
+                //     rt_kprintf("0x%02x ", rsuc_output_eq_buf[i]);
+                // }
+                // rt_kprintf(" rx_len:%d\r\n", rx_len);
+                // rt_kprintf("crc16:0x%x\r\n", crc16);
 
                 if ((rsuc_output_eq_buf[0] == addr) && (crc16 == ((rsuc_output_eq_buf[rx_len - 1] << 8) | rsuc_output_eq_buf[rx_len - 2]))) //对返回的数据进行地址+CRC判定
                 {
@@ -412,7 +415,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
         mb_make_dmgms(&rsuc_tmp_dmgms, 0, &sem_rsuc, CP_CMD_SRC(EQ_CUSTOM_COMMAND), d_src, RSUC_CPID, (uint8_t *)&rsuc_output_dat, sizeof(rsuc_output_dat), &rsuc_resp_data); //向多维消息体中装入消息
         if (RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
         {
-            LOG_D("return param suc!");
+            //LOG_D("return param suc!");
         }
         else
         {
@@ -430,13 +433,13 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
             //for(i=0;i<rx_len;i++)rsuc_output_eq_buf[i]=down_rx_buff.dat[i];//获取串口数据
             rt_memcpy(&rsuc_output_eq_buf[0], &down_rx_buff.dat[0], rx_len);
 
-            rt_kprintf("sprs receive dat:\r\n", crc16);
-            for (i = 0; i < rx_len; i++)
-            {
-                rt_kprintf("0x%02x ", rsuc_output_eq_buf[i]);
-            }
-            rt_kprintf(" rx_len:%d\r\n", rx_len);
-            rt_kprintf("crc16:0x%x\r\n", crc16);
+            // rt_kprintf("sprs receive dat:\r\n", crc16);
+            // for (i = 0; i < rx_len; i++)
+            // {
+            //     rt_kprintf("0x%02x ", rsuc_output_eq_buf[i]);
+            // }
+            // rt_kprintf(" rx_len:%d\r\n", rx_len);
+            // rt_kprintf("crc16:0x%x\r\n", crc16);
         }
         else
         {
@@ -458,7 +461,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
         mb_make_dmgms(&rsuc_tmp_dmgms, 0, &sem_rsuc, CP_CMD_SRC(SEN_EQ_PAS), d_src, RSUC_CPID, (uint8_t *)&rsuc_output_dat, sizeof(rsuc_output_dat), &rsuc_resp_data); //向多维消息体中装入消息
         if (RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
         {
-            LOG_D("return param suc!");
+            //LOG_D("return param suc!");
         }
         else
         {

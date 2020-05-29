@@ -132,7 +132,7 @@ void down_data_parsing_thread_entry(void *p)
     //unsigned int rx_count=0;
 
     
-
+    LOG_D("down_data_parsing_thread_entry startup");
     while(1)
     {        
         if(!down_rx_buff.DataFlag)//帧结束标志位为0，则等待完成信号量

@@ -62,7 +62,7 @@ int Check_sprs_cfg(void)
     res = stat(SPRS_CFG_FILENAME, &stat_buf); //获取串口配置文件信息
     if (res == 0)                             //获取文件信息成功
     {
-        //LOG_D("SPRS.INI read info OK,ALL_IN_size:%d", stat_buf.st_size);
+        LOG_D("SPRS.INI read info OK,ALL_INI_size:%d", stat_buf.st_size);
         status = 1;
         sprs_uart_cfg.buad = ini_getl("portcfg", "buad", 0, SPRS_CFG_FILENAME);
         sprs_uart_cfg.databits = ini_getl("portcfg", "databits", 0, SPRS_CFG_FILENAME);
@@ -86,7 +86,7 @@ int Check_sprs_cfg(void)
         {
             err |= 0x04;
         }
-        sprs_uart_cfg.stopbits -=1;
+        sprs_uart_cfg.stopbits -= 1;
 
         if (((sprs_uart_cfg.bufsize < 32) || (sprs_uart_cfg.bufsize > 512)))
         {
@@ -120,7 +120,7 @@ int Check_sprs_cfg(void)
         sprs_uart_cfg.parity = 0;
     }
 
-    LOG_D("SPRS.INI read,status=%d,err=%d",status,err);
+    LOG_D("SPRS.INI read,status=%d,err=%d", status, err);
     LOG_D("sprs_uart_cfg.buad:%d", sprs_uart_cfg.buad);
     LOG_D("sprs_uart_cfg.databits:%d", sprs_uart_cfg.databits);
     LOG_D("sprs_uart_cfg.stopbits:%d", sprs_uart_cfg.stopbits);
@@ -182,7 +182,7 @@ int Check_eq_CFG(void)
 
     if (res == -1) //获取文件信息失败，说明文件不存在
     {
-        LOG_D("EQMA.CFG does not exist");
+        //LOG_D("EQMA.CFG does not exist");
         fd1 = open("/EQMA.CFG", O_CREAT | O_RDWR); //以创建和读写的方式创建文件
         if (fd1 > 0)                               //成功
         {
@@ -199,7 +199,7 @@ int Check_eq_CFG(void)
         }
     }
 
-    show_eq_manag();
+    //show_eq_manag();
 
     return status; //如果成功，返回0，如果不成功，返回对应的标志位
 }
@@ -225,7 +225,7 @@ int Check_in_CFG(void)
     }
     else
     {
-        LOG_D("INMA.CFG read failure");
+        LOG_E("INMA.CFG read failure");
         status = 0;
     }
 
@@ -252,7 +252,7 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
     DM_GMS_STRU rsuc_tmp_dmgms; //主管道多维消息,发送数据用
     GMS_STRU rsuc_gms;
 
-    LOG_D("d_src:%d,mq_type:%d,addr:%d,type:%d,par:%d,gro:%d", d_src, mq_type, addr, type, par, group);
+    //LOG_D("d_src:%d,mq_type:%d,addr:%d,type:%d,par:%d,gro:%d", d_src, mq_type, addr, type, par, group);
 
     rt_memset(eq_manag_temp1, 0, 4);
     rt_memset(eq_manag_temp2, 0, 4);
@@ -260,8 +260,6 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
     //参数合法性检查
     if (!is_eq_table_presence)
         err = 0xE1; //指令表不存在，返回0xfc
-    if ((addr < 1) || (addr > RSUC_BUS_MAX_DEVICE))
-        err = 0xE2; //地址异常，返回0xf8
 
     if (err == 0)
     {
@@ -278,6 +276,8 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
             if (mq_type == 1) //增加设备
             {
                 //首先判断新增的设备地址是否存在，否则返回错误
+                if ((addr < 1) || (addr > RSUC_BUS_MAX_DEVICE))
+                    err = 0xE2; //地址异常，返回0xf8
                 if (eq_manag.eq[addr - 1].eq_addr != 0)
                 {
                     // close(fd);
@@ -309,7 +309,7 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
                     eq_manag_temp2[2] = eq_manag.eq[addr - 1].eq_par;
                     eq_manag_temp2[3] = eq_manag.eq[addr - 1].eq_group;
 
-                    LOG_D("Add eq Ok,add:%d", addr);
+                    //LOG_D("Add eq Ok,add:%d", addr);
                 }
                 else
                 {
@@ -319,40 +319,61 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
             else if (mq_type == 2) //删除设备
             {
                 //首先判断新增的设备地址是否存在，否则返回错误
-                if (eq_manag.eq[addr - 1].eq_addr == 0)
+                if (addr > RSUC_BUS_MAX_DEVICE)
+                    err = 0xE2; //地址异常，返回0xf8
+                LOG_D("del_node1");
+                if (addr == 0) //如果地址为0，则删除全部
                 {
-                    //close(fd);
-                    err = 0xE5;
-                }
-                if (eq_manag.eq_num == 0)
-                {
-                    //close(fd);
-                    err = 0XE6;
-                } //  如果总线当前设备数量已空，返回错误（其实和地址判断是重复的）
-                if (err == 0)
-                {
-                    eq_manag.eq_num--;
-                    eq_manag.eq[addr - 1].eq_addr = 0;
-                    eq_manag.eq[addr - 1].eq_type = 0;
-                    eq_manag.eq[addr - 1].eq_par = 0;
-                    eq_manag.eq[addr - 1].eq_group = 0;
+                    unsigned char i = 0;
+                    LOG_D("del_node2");
+                    for (i = 0; i < RSUC_BUS_MAX_DEVICE; i++)
+                    {
+                        eq_manag.eq[i].eq_addr = 0;
+                        eq_manag.eq[i].eq_type = 0;
+                        eq_manag.eq[i].eq_par = 0;
+                        eq_manag.eq[i].eq_group = 0;
+                    }
+                    eq_manag.eq_num = 0;
                     write(fd, &eq_manag, sizeof(eq_manag));
-
-                    eq_manag_temp2[0] = eq_manag.eq[addr - 1].eq_addr;
-                    eq_manag_temp2[1] = eq_manag.eq[addr - 1].eq_type;
-                    eq_manag_temp2[2] = eq_manag.eq[addr - 1].eq_par;
-                    eq_manag_temp2[3] = eq_manag.eq[addr - 1].eq_group;
-                    LOG_D("Delte eq Ok,add:%d", addr);
+                    LOG_D("del_node3");
+                    
+                    //close(fd);
+                    //err = 0xE5;
                 }
                 else
                 {
-                    LOG_E("Delte eq failure,add:%d", addr);
+                    if (eq_manag.eq_num == 0)
+                    {
+                        //close(fd);
+                        err = 0XE6;
+                    } //  如果总线当前设备数量已空，返回错误（其实和地址判断是重复的）
+                    if (err == 0)
+                    {
+                        eq_manag.eq_num--;
+                        eq_manag.eq[addr - 1].eq_addr = 0;
+                        eq_manag.eq[addr - 1].eq_type = 0;
+                        eq_manag.eq[addr - 1].eq_par = 0;
+                        eq_manag.eq[addr - 1].eq_group = 0;
+                        write(fd, &eq_manag, sizeof(eq_manag));
+
+                        eq_manag_temp2[0] = eq_manag.eq[addr - 1].eq_addr;
+                        eq_manag_temp2[1] = eq_manag.eq[addr - 1].eq_type;
+                        eq_manag_temp2[2] = eq_manag.eq[addr - 1].eq_par;
+                        eq_manag_temp2[3] = eq_manag.eq[addr - 1].eq_group;
+                        //LOG_D("Delte eq Ok,add:%d", addr);
+                    }
+                    else
+                    {
+                        LOG_E("Delte eq failure,add:%d", addr);
+                    }
                 }
             }
 
             else if (mq_type == 3) //修改设备
             {
                 //首先判断新增的设备地址是否存在，否则返回错误
+                if ((addr < 1) || (addr > RSUC_BUS_MAX_DEVICE))
+                    err = 0xE2; //地址异常，返回0xf8
                 if ((eq_manag.eq[addr - 1].eq_addr == 0))
                 {
                     //close(fd);
@@ -379,7 +400,7 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
                     eq_manag_temp2[2] = eq_manag.eq[addr - 1].eq_par;
                     eq_manag_temp2[3] = eq_manag.eq[addr - 1].eq_group;
 
-                    LOG_D("Modify eq Ok,add:%d", addr);
+                    //LOG_D("Modify eq Ok,add:%d", addr);
                 }
                 else
                 {
@@ -388,6 +409,8 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
             }
             else //查询设备
             {
+                if ((addr < 1) || (addr > RSUC_BUS_MAX_DEVICE))
+                    err = 0xE2; //地址异常，返回0xf8
                 if (eq_manag.eq[addr - 1].eq_addr == 0)
                 {
                     //close(fd);
@@ -429,7 +452,7 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
     mb_make_dmgms(&rsuc_tmp_dmgms, 0, &sem_rsuc, CP_CMD_SRC(mq_type), d_src, RSUC_CPID, (uint8_t *)&rsuc_output_dat, sizeof(rsuc_output_dat), &rsuc_resp_data); //向多维消息体中装入消息
     if (RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
     {
-        LOG_D("return param suc!");
+        //LOG_D("return param suc!");
     }
     else
     {
@@ -487,7 +510,7 @@ int Init_in_CFG(void)
         eq_in_blocktest.eq_in[0].in[2] = 0x00;
         eq_in_blocktest.eq_in[0].in[3] = 0x00;
         eq_in_blocktest.eq_in[0].in[4] = 0x00;
-        eq_in_blocktest.eq_in[0].in[5] = 0x10;
+        eq_in_blocktest.eq_in[0].in[5] = 10;
 
         eq_in_blocktest.eq_in[2].in_len = 8;
         eq_in_blocktest.eq_in[2].in[0] = 1;

@@ -15,7 +15,7 @@
 
 //#define RSUC_DEBUG
 
-#define sprs_led_debug
+//#define sprs_led_debug
 
 //注:将CPNAME替换为实际mapp名，形如UTCM STOM
 
