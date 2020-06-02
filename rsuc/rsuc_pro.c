@@ -195,6 +195,10 @@ int rsuc_eq_access_thread_entry(void *p)
             // LOG_D("rsuc_dat_buf.dat[12]：%d", rsuc_dat_buf.dat[12]);
 
             
+            // if()//自测试代码
+            // {
+
+            // }
 
             if ((rsuc_dat_buf.dat[0] >= 1) && (rsuc_dat_buf.dat[0] <= 4))
             {

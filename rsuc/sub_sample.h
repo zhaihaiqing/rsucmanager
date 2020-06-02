@@ -16,6 +16,10 @@
 // 	SEN_EQ_PAS	   =13,		//透传指令
 // };
 
+
+
+
+
 enum EQ_CODE
 {
 	EQ_HCF700=1,

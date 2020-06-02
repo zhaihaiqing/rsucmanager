@@ -5,6 +5,20 @@
 #define LOG_LVL LOG_LVL_DBG
 #include <ulog.h>
 
+
+//大小端转换
+#define htons(n) ((((n) & 0x00ff) << 8) | (((n) & 0xff00) >> 8))
+#define ntohs(n) htons(n)
+#define htonl(n) ((((n) & 0x000000ff) << 24)|  \
+				 (((n) & 0x0000ff00) << 8)  |  \
+				 (((n) & 0x00ff0000) >> 8)  |  \
+				 (((n) & 0xff000000) >> 24))
+#define ntohl(n) htonl(n)
+#define htond(n) (htonl(n & 0xffffffff) << 32) | htonl(n >> 32)
+#define ntohd(n) htond(n)
+
+
+
 //采集子函数
 /**************************************************
  * 
@@ -35,7 +49,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
     eq_in_index_type eq_in_index = {0}; //索引块
     in_manag_type eq_in_block = {0};    //指令块
 
-    //LOG_D("addr=%d",addr);
+    //LOG_D("d_src=%d,mq_type=%d,addr=%d,dat=%d,dat_len=%d",d_src,mq_type,addr,*dat,dat_len);
 
     if (!is_in_table_presence)
         err = 0xC1; //指令表不存在，返回0xC1
@@ -71,16 +85,20 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
                     size = read(fd1, &eq_in_block, sizeof(eq_in_block));                                  //读出该设备的指令
                     //LOG_D("Read in success");
 
+                    eq_in_block.eq_res_time=htonl(eq_in_block.eq_res_time);
                     //LOG_D("fd1:%d,fd2:%d,size:%d", fd1, fd2, size);
+
                     //LOG_D("eq_type:%d,check_type:%d,res_time:%d,in_type:%d", eq_in_block.eq_type, eq_in_block.check_type, eq_in_block.eq_res_time, eq_in_block.eq_in_type);
+
+
                     if (mq_type == GET_EQ_CFG_INFO)
                         ;
                         //LOG_D("in0_len:%d,in0[0]:%d,in0[1]:%d,in0[2]:%d", eq_in_block.eq_in[0].in_len, eq_in_block.eq_in[0].in[0], eq_in_block.eq_in[0].in[1], eq_in_block.eq_in[0].in[2]);
                     else if (mq_type == GET_EQ_GET_SDAT)
                     {
-                        if (eq_in_block.eq_in_type)
-                            ;
-                            //LOG_D("in1_len:%d,in1[0]:%d,in1[1]:%d,in1[2]:%d", eq_in_block.eq_in[1].in_len, eq_in_block.eq_in[1].in[0], eq_in_block.eq_in[1].in[1], eq_in_block.eq_in[1].in[2]);
+                        if (eq_in_block.eq_in_type);
+                            
+                        //LOG_D("in1_len:%d,in1[0]:%d,in1[1]:%d,in1[2]:%d", eq_in_block.eq_in[1].in_len, eq_in_block.eq_in[1].in[0], eq_in_block.eq_in[1].in[1], eq_in_block.eq_in[1].in[2]);
                         //LOG_D("in2_len:%d,in2[0]:%d,in2[1]:%d,in2[2]:%d", eq_in_block.eq_in[2].in_len, eq_in_block.eq_in[2].in[0], eq_in_block.eq_in[2].in[1], eq_in_block.eq_in[2].in[2]);
                     }
                     else if (mq_type == EQ_CUSTOM_COMMAND)

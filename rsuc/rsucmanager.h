@@ -34,7 +34,7 @@ typedef struct __attribute__ ((__packed__))
 {
 	uint8_t  d_src;							//消息源
 	uint8_t  d_len;                         //数据长度
-    uint8_t  dat[16];						//每个消息最长64字节
+    uint8_t  dat[16];						//每个消息最长16字节
 }rsuc_inside_dat_type;
 
 // /* 定义结构体，组件返回消息 */
