@@ -22,7 +22,7 @@ unsigned char busdevice_access_THREAD_PRIORITY = 21;
 struct rt_semaphore down_rx_sem;
 struct rt_semaphore down_frame_sem;
 
-sprs_uart_cfg_type  sprs_uart_cfg;
+sprs_uart_cfg_type sprs_uart_cfg;
 
 //向主管道发送消息
 int Rsuc_Send_Msg(DM_GMS_STRU *dat)
@@ -115,12 +115,12 @@ int down_usart_init(void)
 
 void rsuc_GPIO_init(void)
 {
-#ifdef  sprs_led_debug
-    rt_pin_mode(LED1_PIN_NUM, PIN_MODE_OUTPUT);      //初始化LED灯
+#ifdef sprs_led_debug
+    rt_pin_mode(LED1_PIN_NUM, PIN_MODE_OUTPUT); //初始化LED灯
 #endif
     rt_pin_mode(M_EN_PIN_NUM, PIN_MODE_OUTPUT);      //初始化模块电源
     rt_pin_mode(RS485_TRX_PIN_NUM, PIN_MODE_OUTPUT); //初始化RS485方向控制引脚
-#ifdef  sprs_led_debug
+#ifdef sprs_led_debug
     LED1_OFF();
 #endif
     rsuc_MPOW_EN_ON();
@@ -134,7 +134,7 @@ int rsuc_eq_access_thread_entry(void *p)
 {
     int err = 0;
     uint8_t temp[8] = {0};
-    uint8_t i=0;
+    uint8_t i = 0;
     rsuc_inside_dat_type rsuc_dat_buf = {0};
     DM_GMS_STRU rsuc_dat_dmgms;
     GMS_STRU rsuc_gms; //主管道信息,用于解析
@@ -194,10 +194,9 @@ int rsuc_eq_access_thread_entry(void *p)
             // LOG_D("rsuc_dat_buf.dat[11]：%d", rsuc_dat_buf.dat[11]);
             // LOG_D("rsuc_dat_buf.dat[12]：%d", rsuc_dat_buf.dat[12]);
 
-            
-            // if()//自测试代码
+            // if ((rsuc_dat_buf.d_src == MB_STATN_SELF_TEST) && (rsuc_dat_buf.dat[0] == SETE_CMD_START_SELF_TEST)) //如果，自测试代码
             // {
-
+            //     rsuc_self_test(rsuc_dat_buf.d_src,rsuc_dat_buf.dat[0]);
             // }
 
             if ((rsuc_dat_buf.dat[0] >= 1) && (rsuc_dat_buf.dat[0] <= 4))

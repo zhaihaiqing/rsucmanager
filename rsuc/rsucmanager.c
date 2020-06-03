@@ -45,6 +45,7 @@ uint8_t rsuc_output_eq_buf[256] = {0}; //传感器返回的数据存在在该全
 void RSUC_msg_pro_entry(void *p) //CPNAME组件消息处理进程
 {
     //DM_GMS_STRU rsuc_dat_dmgms;//主管道多维消息,发送数据用
+    DM_GMS_STRU rsuc_tmp_dmgms; //主管道多维消息,发送数据用
     GMS_STRU rsuc_gms;
     uint8_t i = 0;
     static rsuc_inside_dat_type rsuc_input_dat = {0};
@@ -62,10 +63,9 @@ void RSUC_msg_pro_entry(void *p) //CPNAME组件消息处理进程
                sizeof(rsuc_input_dat_mq_pool), /* 内存池的大小是 msg_pool 的大小 */
                RT_IPC_FLAG_FIFO);              /* 如果有多个线程等待，按照先来先得到的方法分配消息 */
 
-
-    is_cfg_table_presence = Check_sprs_cfg();//检查ini文件，获取配置
-    is_eq_table_presence = Check_eq_CFG(); //检查设备表，正常=1，异常=0；
-    is_in_table_presence = Check_in_CFG(); //检查指令表，正常=1，异常=0；
+    is_cfg_table_presence = Check_sprs_cfg(); //检查ini文件，获取配置
+    is_eq_table_presence = Check_eq_CFG();    //检查设备表，正常=1，异常=0；
+    is_in_table_presence = Check_in_CFG();    //检查指令表，正常=1，异常=0；
 
     //硬件初始化
     rsuc_GPIO_init();  //初始化GPIO
@@ -74,15 +74,54 @@ void RSUC_msg_pro_entry(void *p) //CPNAME组件消息处理进程
 
     //Init_in_CFG();       //测试，初始化指令表
 
-    
+    // rt_thread_mdelay(2000);
+    // rsuc_self_test();
+    // rt_thread_mdelay(2000);
+    // rsuc_self_test();
+    // rt_thread_mdelay(2000);
+    // rsuc_self_test();
+    // rt_thread_mdelay(2000);
+    // rsuc_self_test();
+
     while (1)
     {
         if (rt_mq_recv(&rsuc_pipe, &rsuc_gms, sizeof(GMS_STRU), RT_WAITING_FOREVER) == RT_EOK) //从cpname_pipe获取消息，等待模式
         {
-            //LOG_D("SPRS:msg recved");
+            LOG_D("SPRS:msg recved");
 
             if (rsuc_gms.d_cmd.is_src_cmd == 1) //使用源的指令解析
             {
+
+                if (rsuc_gms.d_cmd.cmd == SETE_CMD_START_SELF_TEST)
+                {
+                    uint8_t MAX13430_err;
+                    SETE_RES_DATA_STRU res = {"MAX13430", 1};
+
+                    MAX13430_err = rsuc_self_test();
+
+                    if (MAX13430_err)
+                    {
+                        LOG_E("max13430 err");
+                    }
+                    else
+                    {
+                        LOG_D("max13430 success");
+                    }
+
+                    res.data[0] = MAX13430_err;
+                    //发送数据
+                    rt_memset(&rsuc_tmp_dmgms, 0, sizeof(DM_GMS_STRU));
+                    mb_make_dmgms(&rsuc_tmp_dmgms, 0, &sem_rsuc, CP_CMD_DST(SETE_CMD_CP_SELFTEST_RESP), rsuc_gms.d_src, RSUC_CPID, (uint8_t *)&res, sizeof(SETE_RES_DATA_STRU), &rsuc_resp_data); //向多维消息体中装入消息
+                    if (RT_EOK == Rsuc_Send_Msg(&rsuc_tmp_dmgms))
+                    {
+                        LOG_D("return param suc!");
+                    }
+                    else
+                    {
+                        LOG_E("return param err!");
+                    }
+                }
+
                 mb_resp_msg(&rsuc_gms, MB_STATN_RSUC, 0); //释放信号量并返回结果
             }
             else //使用目标的指令解析
@@ -90,12 +129,16 @@ void RSUC_msg_pro_entry(void *p) //CPNAME组件消息处理进程
                 rt_memset(&rsuc_input_dat, 0, sizeof(rsuc_input_dat)); //清空buf
                 //##rt_sem_init(&sem_rsuc_sample_pro,"sem_rsuc_sample_pro",0,RT_IPC_FLAG_FIFO);//第二层：初始化任务线程信号量
 
-                rsuc_input_dat.d_src = rsuc_gms.d_src;                                                    //获取消息源组件号
-                rsuc_input_dat.d_len = rsuc_gms.d_dl;                                                     //获取数据（纯数据区）长度
-                rsuc_input_dat.dat[0] = rsuc_gms.d_cmd.cmd;                                               //获取指令码
-                rt_memcpy(&rsuc_input_dat.dat[1], (uint8_t *)rsuc_gms.d_p + 1, rsuc_input_dat.d_len - 1); //获取数据
+                rsuc_input_dat.d_src = rsuc_gms.d_src;      //获取消息源组件号
+                rsuc_input_dat.d_len = rsuc_gms.d_dl;       //获取数据（纯数据区）长度
+                rsuc_input_dat.dat[0] = rsuc_gms.d_cmd.cmd; //获取指令码
 
-               // LOG_D("SPRS:d_src:%d,d_len:%d,mq_type:%d,dat[1]:%d,dat[2]:%d,dat[3]:%d", rsuc_input_dat.d_src, rsuc_input_dat.d_len, rsuc_input_dat.dat[0], rsuc_input_dat.dat[1], rsuc_input_dat.dat[2], rsuc_input_dat.dat[3]);
+                if (rsuc_input_dat.d_src != MB_STATN_SELF_TEST)
+                {
+                    rt_memcpy(&rsuc_input_dat.dat[1], (uint8_t *)rsuc_gms.d_p + 1, rsuc_input_dat.d_len - 1); //获取数据
+                }
+
+                // LOG_D("SPRS:d_src:%d,d_len:%d,mq_type:%d,dat[1]:%d,dat[2]:%d,dat[3]:%d", rsuc_input_dat.d_src, rsuc_input_dat.d_len, rsuc_input_dat.dat[0], rsuc_input_dat.dat[1], rsuc_input_dat.dat[2], rsuc_input_dat.dat[3]);
 
                 rt_mq_send(&rsuc_input_dat_mq, &rsuc_input_dat, sizeof(rsuc_input_dat)); //第二层：向任务处理线程发送消息队列
 

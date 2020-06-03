@@ -28,7 +28,7 @@ enum EQ_CODE
 };
 
 
-
+int rsuc_self_test(void);
 int rsuc_sub_sample(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t *dat,uint8_t dat_len);
 
 

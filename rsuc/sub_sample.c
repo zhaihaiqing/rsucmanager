@@ -5,19 +5,62 @@
 #define LOG_LVL LOG_LVL_DBG
 #include <ulog.h>
 
-
 //大小端转换
-#define htons(n) ((((n) & 0x00ff) << 8) | (((n) & 0xff00) >> 8))
+#define htons(n) ((((n)&0x00ff) << 8) | (((n)&0xff00) >> 8))
 #define ntohs(n) htons(n)
-#define htonl(n) ((((n) & 0x000000ff) << 24)|  \
-				 (((n) & 0x0000ff00) << 8)  |  \
-				 (((n) & 0x00ff0000) >> 8)  |  \
-				 (((n) & 0xff000000) >> 24))
+#define htonl(n) ((((n)&0x000000ff) << 24) | \
+                  (((n)&0x0000ff00) << 8) |  \
+                  (((n)&0x00ff0000) >> 8) |  \
+                  (((n)&0xff000000) >> 24))
 #define ntohl(n) htonl(n)
 #define htond(n) (htonl(n & 0xffffffff) << 32) | htonl(n >> 32)
 #define ntohd(n) htond(n)
 
+//自测试程序，读取固定地址的HCF2100
+int rsuc_self_test(void)
+{
+    uint8_t tem[8] = {0};
+    int res=0;
+    uint8_t rx_len=0,err=0,i=0;
+    uint16_t crc16=0;
 
+
+    tem[0]=0x02;tem[1]=0x04;tem[2]=0x00;tem[3]=0x00;tem[4]=0x00;tem[5]=0x01;tem[6]=0x31;tem[7]=0xf9;
+
+    down_uart_send_dat(&tem[0], 8); //发送指令
+
+    rt_sem_control(&down_frame_sem, RT_IPC_CMD_RESET, RT_NULL); //等待前清零信号量，防止误操作
+    res = rt_sem_take(&down_frame_sem,  300 );
+    if (res == RT_EOK) //获取成功
+    {
+        rx_len = down_rx_device_Len;
+        rt_memcpy(&rsuc_output_eq_buf[0], &down_rx_buff.dat[0], rx_len);
+        crc16 = Modbus_CRC16_Check(rsuc_output_eq_buf, rx_len - 2);
+
+        // LOG_D("sprs receive dat:");
+        // for (i = 0; i < rx_len; i++)
+        // {
+        //     rt_kprintf("0x%02x ", rsuc_output_eq_buf[i]);
+        // }
+        // rt_kprintf(" rx_len:%d\r\n", rx_len);
+        // rt_kprintf("crc16:0x%x\r\n", crc16);
+
+        if ((rsuc_output_eq_buf[0] == tem[0]) && (crc16 == ((rsuc_output_eq_buf[rx_len - 1] << 8) | rsuc_output_eq_buf[rx_len - 2])) && (   ((rsuc_output_eq_buf[3]<<8) |  rsuc_output_eq_buf[4]) == 2100   ) ) //对返回的数据进行地址+CRC判定
+        {
+            err = 0x00;
+        }
+        else
+        {
+            err = 0x01;
+        }
+    }
+    else
+    {
+        err = 0x01; //超时错误
+    }
+
+    return err;
+}
 
 //采集子函数
 /**************************************************
@@ -85,25 +128,25 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
                     size = read(fd1, &eq_in_block, sizeof(eq_in_block));                                  //读出该设备的指令
                     //LOG_D("Read in success");
 
-                    eq_in_block.eq_res_time=htonl(eq_in_block.eq_res_time);
+                    eq_in_block.eq_res_time = htonl(eq_in_block.eq_res_time);
                     //LOG_D("fd1:%d,fd2:%d,size:%d", fd1, fd2, size);
 
                     //LOG_D("eq_type:%d,check_type:%d,res_time:%d,in_type:%d", eq_in_block.eq_type, eq_in_block.check_type, eq_in_block.eq_res_time, eq_in_block.eq_in_type);
 
-
                     if (mq_type == GET_EQ_CFG_INFO)
                         ;
-                        //LOG_D("in0_len:%d,in0[0]:%d,in0[1]:%d,in0[2]:%d", eq_in_block.eq_in[0].in_len, eq_in_block.eq_in[0].in[0], eq_in_block.eq_in[0].in[1], eq_in_block.eq_in[0].in[2]);
+                    //LOG_D("in0_len:%d,in0[0]:%d,in0[1]:%d,in0[2]:%d", eq_in_block.eq_in[0].in_len, eq_in_block.eq_in[0].in[0], eq_in_block.eq_in[0].in[1], eq_in_block.eq_in[0].in[2]);
                     else if (mq_type == GET_EQ_GET_SDAT)
                     {
-                        if (eq_in_block.eq_in_type);
-                            
+                        if (eq_in_block.eq_in_type)
+                            ;
+
                         //LOG_D("in1_len:%d,in1[0]:%d,in1[1]:%d,in1[2]:%d", eq_in_block.eq_in[1].in_len, eq_in_block.eq_in[1].in[0], eq_in_block.eq_in[1].in[1], eq_in_block.eq_in[1].in[2]);
                         //LOG_D("in2_len:%d,in2[0]:%d,in2[1]:%d,in2[2]:%d", eq_in_block.eq_in[2].in_len, eq_in_block.eq_in[2].in[0], eq_in_block.eq_in[2].in[1], eq_in_block.eq_in[2].in[2]);
                     }
                     else if (mq_type == EQ_CUSTOM_COMMAND)
                         ;
-                        //LOG_D("in3_len:%d,in3[0]:%d,in3[1]:%d,in3[2]:%d", eq_in_block.eq_in[3].in_len, eq_in_block.eq_in[3].in[0], eq_in_block.eq_in[3].in[1], eq_in_block.eq_in[3].in[2]);
+                    //LOG_D("in3_len:%d,in3[0]:%d,in3[1]:%d,in3[2]:%d", eq_in_block.eq_in[3].in_len, eq_in_block.eq_in[3].in[0], eq_in_block.eq_in[3].in[1], eq_in_block.eq_in[3].in[2]);
                 }
                 close(fd1);
             }
@@ -440,7 +483,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
             LOG_E("return param err!");
         }
         break;
-    case SEN_EQ_PAS:                              //透传指令
+    case SEN_EQ_PAS:                      //透传指令
         down_uart_send_dat(dat, dat_len); //发送透传指令
 
         rt_sem_control(&down_frame_sem, RT_IPC_CMD_RESET, RT_NULL); //等待前清零信号量，防止误操作
