@@ -170,13 +170,18 @@ int Check_eq_CFG(void)
         {
             size = read(fd1, &eq_manag, sizeof(eq_manag));
             close(fd1);
-            LOG_D("size:%d", size);
+            //LOG_D("size:%d", size);
             status = 1;
         }
         else
         {
             LOG_E("open EQMA failure");
             status = 0;
+        }
+
+        if(stat_buf.st_size != sizeof(eq_manag))
+        {
+            res=-1;
         }
     }
 
