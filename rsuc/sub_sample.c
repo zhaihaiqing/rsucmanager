@@ -112,12 +112,14 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
         }
         else
         {
+            LOG_D("eq_manag.eq[addr - 1].eq_addr:%d",eq_manag.eq[addr - 1].eq_addr);
             if (eq_manag.eq[addr - 1].eq_addr == 0)
                 err = 0xd1;                          //1：判断该设备是否在节点表中存在
             eq_type = eq_manag.eq[addr - 1].eq_type; //2：根据地址，在节点表中查找对应的设备类型
             eq_par = eq_manag.eq[addr - 1].eq_par;
             eq_gro = eq_manag.eq[addr - 1].eq_group;
 
+            LOG_D("22222222222err:%d",err);
             //eq_type = 2;                     //3：根据设备类型，在指令表中读取该设备的指令
             if (err == 0)
             {
@@ -149,18 +151,18 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
                     //LOG_D("in3_len:%d,in3[0]:%d,in3[1]:%d,in3[2]:%d", eq_in_block.eq_in[3].in_len, eq_in_block.eq_in[3].in[0], eq_in_block.eq_in[3].in[1], eq_in_block.eq_in[3].in[2]);
                 }
                 close(fd1);
-            }
-        }
 
-        if ((fd1 <= 0) || (fd2 < 0))
-        {
-            //文件操作错误，发送信号量
-            if ((size != sizeof(eq_in_index)) && (size != sizeof(eq_in_index)))
-            {
-                err = 0xc3;
-                LOG_D("SEN_EQ_PAS failure");
+                if ((fd1 <= 0) || (fd2 < 0))
+                {
+                    //文件操作错误，发送信号量
+                    if ((size != sizeof(eq_in_index)) && (size != sizeof(eq_in_index)))
+                    {
+                        err = 0xc3;
+                        LOG_D("SEN_EQ_PAS failure");
+                    }
+                }
             }
-        }
+        } 
     }
 
     switch (mq_type) //判断消息类型，根据设备类型执行不同的采集指令

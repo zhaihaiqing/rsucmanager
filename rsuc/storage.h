@@ -65,7 +65,7 @@ typedef struct __attribute__ ((__packed__))						//单个设备的指令构成()
 }in_manag_type;
 
 
-
+extern unsigned char sprs_supprot_max_num;
 
 extern eq_manag_type   eq_manag;   	//定义所有的总线设备
 //extern in_manag_type   eq_in_block;	//设备指令表

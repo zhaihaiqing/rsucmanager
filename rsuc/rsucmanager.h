@@ -22,6 +22,7 @@
 #define RSUC_VERSION    0x400
 
 #define RSUC_CPID  (8)
+//#define  MB_STATN_RSUC  8
 
 #define RSUC_PIPE_NMSG  (20)
 #define RSUC_POOL_SIZE  (sizeof(GMS_STRU)*RSUC_PIPE_NMSG)

@@ -170,6 +170,46 @@ void down_data_parsing_thread_entry(void *p)
 }
 
 
+/**************************************************
+ * 
+ * 创建串口数据接收线程2，高优先级,DMA接收方式
+ * 静态创建
+ * ***********************************************/
+// void down_data_parsing_thread_entry2(void *p)
+// {
+//     struct rx_msg msg;
+//     rt_err_t result;
+//     rt_uint32_t rx_length;
+//     static char rx_buffer[256 + 2];
+
+    
+//     LOG_D("down_data_parsing_thread_entry2 startup");
+//     while(1)
+//     {        
+        
+//         rt_memset(&msg, 0, sizeof(msg));
+//         /* 从消息队列中读取消息*/
+//         result = rt_mq_recv(&rx_mq, &msg, sizeof(msg), RT_WAITING_FOREVER);
+//         if(result == RT_EOK)
+//         {
+//             /* 从串口读取数据*/
+//             rx_length = rt_device_read(msg.dev, 0, rx_buffer, msg.size);
+//             rx_buffer[rx_length] = '\0';
+//             /* 通过串口设备serial 输出读取到的消息*/
+//             rt_device_write(down_serial, 0, rx_buffer, rx_length);
+//             /* 打印数据*/
+//             rt_kprintf("%s\n",rx_buffer);
+
+//             rt_memset(&down_rx_buff.dat[0],0,ONE_DATA_MAXLEN);
+//             down_rx_buff.DataLen=rx_length;
+//             memcpy(&down_rx_buff.dat[0],&rx_buffer[0],rx_length);
+//             down_rx_device_Len=rx_length;
+//             rt_sem_release(&down_frame_sem);//处理完成后发送信号量
+//         }
+//     }
+// }
+
+
 
 
 

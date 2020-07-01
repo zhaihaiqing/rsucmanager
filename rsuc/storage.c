@@ -11,6 +11,8 @@
 
 unsigned char storage_buff[RSUC_BUS_MAX_DEVICE] = {0}; //定义测试buf
 
+unsigned char sprs_supprot_max_num;
+
 eq_manag_type eq_manag; //定义所有的总线设备管理表，组件启动后，读取该表到内存中
 //in_manag_type   eq_in_block;    //定义单台设备的指令块，RSUC接收到业务组件消息后，根据访问设备的类型，将该设备的指令块读入到内存中（指令表可能比较大，无法完全读入到内存中）
 
@@ -215,11 +217,14 @@ int Check_eq_CFG(void)
  * 
  * 
  ****************************************************/
+
 int Check_in_CFG(void)
 {
     int fd = 0, size = 0;
     int res = 0, status = 0;
+    unsigned char buf[16]={0};
     struct stat stat_buf;
+    int fd1=0,fd2=0;
     //in_manag_type eq_in_blocktest = {0};
 
     res = stat("/INMA.CFG", &stat_buf); //获取文件信息
@@ -227,12 +232,26 @@ int Check_in_CFG(void)
     {
         LOG_D("INMA.CFG read info OK,ALL_IN_size:%d", stat_buf.st_size);
         status = 1;
+
+        fd1 = open("/INMA.CFG", O_RDWR);
+        if (fd1 > 0)
+        {
+            fd2 = lseek(fd1, 0, SEEK_SET);
+            size = read(fd1, &buf, sizeof(buf)); //读出该设备的指令
+        }
+        close(fd1);
+
+        sprs_supprot_max_num=buf[2];
+
+        LOG_D("sprs_supprot_max_num:%d", sprs_supprot_max_num);
     }
     else
     {
         LOG_E("INMA.CFG read failure");
         status = 0;
     }
+
+   
 
     return status; //如果成功，返回0，如果不成功，返回对应的标志位
 }
@@ -294,7 +313,8 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
                     err = 0xE4;
                 } //  如果总线当前设备数量已满，返回错误（其实和地址判断是重复的）
 
-                if (type == 0)
+                LOG_D("type:%d,sprs_supprot_max_num:%d",type,sprs_supprot_max_num);
+                if ((type == 0) || (type>sprs_supprot_max_num))
                 {
                     //close(fd);
                     err = 0xEA;
@@ -327,6 +347,9 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
                 if (addr > RSUC_BUS_MAX_DEVICE)
                     err = 0xE2; //地址异常，返回0xf8
                 LOG_D("del_node1");
+                if (eq_manag.eq[addr - 1].eq_addr == 0)
+                    err = 0xE5; //如果要删除的设备不存在
+                    
                 if (addr == 0) //如果地址为0，则删除全部
                 {
                     unsigned char i = 0;
@@ -385,7 +408,7 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
                     err = 0xE7;
                 } //  如果新增的地址已经存在，返回错误（地址根据对应的号放入），数组下标从0开始
 
-                if (type == 0)
+                if ((type == 0) || (type>sprs_supprot_max_num))
                 {
                     //close(fd);
                     err = 0xEA;
