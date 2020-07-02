@@ -1,4 +1,5 @@
 ﻿#include "rsucmanager.h"
+#include "downstream.h"
 
 #define LOG_TAG "SPRS_PRO"
 #define LOG_LVL LOG_LVL_DBG
@@ -7,10 +8,16 @@
 //此文件主要是组件的具体内部实现
 //完成硬件初始化、系统功能初始化（软件定时器除外）
 
-/*******    串口接收线程    ******/
-struct rt_thread rthread_downstream;
-unsigned char rthread_downstream_stack[1024];
-unsigned char downstream_THREAD_PRIORITY = 20;
+
+/*******    串口接收帧数据线程    ******/
+struct rt_thread rthread_down_serial;
+unsigned char rthread_down_serial_stack[3072];
+unsigned char rthread_down_serial_THREAD_PRIORITY = 20;
+
+/*******    串口接收帧数据线程消息队列    ******/
+struct rt_messagequeue down_serial_rx_mq; //定义主线程与数据处理函数的消息队列
+rt_uint8_t down_serial_rx_mq_pool[1024];
+
 
 /*******    总线设备访问线程    ******/
 //1：等待业务组件发送的消息，对消息进行处理，访问下层设备
@@ -19,7 +26,6 @@ struct rt_thread rthread_busdevice_access;
 unsigned char rthread_busdevice_access_stack[3072];
 unsigned char busdevice_access_THREAD_PRIORITY = 21;
 
-struct rt_semaphore down_rx_sem;
 struct rt_semaphore down_frame_sem;
 
 sprs_uart_cfg_type sprs_uart_cfg;
@@ -55,7 +61,7 @@ int down_usart_init(void)
     char str[] = "hello RT_Thread!\r\n";
     struct serial_configure config = RT_SERIAL_CONFIG_DEFAULT;
 
-    down_USART_ClearBuf_Flag();
+    //down_USART_ClearBuf_Flag();
     rt_strncpy(uart_name, DOWNSTREAM_UART_NAME, RT_NAME_MAX);
 
     /* step1：查找串口设备 */
@@ -68,36 +74,37 @@ int down_usart_init(void)
 
     /* step2：修改串口配置参数 */
     
-    config.baud_rate = sprs_uart_cfg.buad; //修改波特率为 9600
+    config.baud_rate = sprs_uart_cfg.buad;        //修改波特率为 9600
     config.data_bits = sprs_uart_cfg.databits;    //数据位 8
     config.stop_bits = sprs_uart_cfg.stopbits;    //停止位 1
-    config.bufsz = sprs_uart_cfg.bufsize;                //修改缓冲区 buff size 为 128
-    config.parity = sprs_uart_cfg.parity;       //无奇偶校验位
+    config.bufsz = sprs_uart_cfg.bufsize;         //修改缓冲区 buff size 为 128
+    config.parity = sprs_uart_cfg.parity;         //无奇偶校验位
+
 
     /* step3：控制串口设备。通过控制接口传入命令控制字，与控制参数 */
     rt_device_control(down_serial, RT_DEVICE_CTRL_CONFIG, &config);
 
-    /*以中断接收及轮询发送模式打开串口设备*/
-    rt_device_open(down_serial, RT_DEVICE_FLAG_INT_RX);
-
-    //初始化信号量
-    rt_sem_init(&down_rx_sem, "down_rx_sem", 0, RT_IPC_FLAG_FIFO);
     rt_sem_init(&down_frame_sem, "down_frame_sem", 0, RT_IPC_FLAG_FIFO); //创建信号量
 
-    /*设置回调函数*/
-    rt_device_set_rx_indicate(down_serial, down_uart_rx_ind);
+    rt_mq_init(&down_serial_rx_mq, /* 创建消息队列，组件消息接收线程与任务处理线程通信 */
+               "down_serial_rx_mq",
+               &down_serial_rx_mq_pool,        /* 内存池指向 msg_pool */
+               sizeof(down_rx_msg),                             /* 每个消息的大小是 256 字节 */
+               sizeof(down_serial_rx_mq_pool), /* 内存池的大小是 msg_pool 的大小 */
+               RT_IPC_FLAG_FIFO);              /* 如果有多个线程等待，按照先来先得到的方法分配消息 */
 
-    /*发送测试字符*/
-    //down_uart_send_dat(str, (sizeof(str) - 1));
+    rt_device_open(down_serial, RT_DEVICE_FLAG_DMA_RX);     /* 以DMA 接收及轮询发送方式打开串口设备*/
+
+    rt_device_set_rx_indicate(down_serial, down_uart_input);
 
     //创建串口数据接收线程
-    rt_thread_init(&rthread_downstream,
-                   "rthread_downstream",
-                   down_data_parsing_thread_entry,
+    rt_thread_init(&rthread_down_serial,
+                   "rthread_down_serial",
+                   serial_thread_entry,
                    RT_NULL,
-                   rthread_downstream_stack,
-                   sizeof(rthread_downstream_stack),
-                   downstream_THREAD_PRIORITY,
+                   rthread_down_serial_stack,
+                   sizeof(rthread_down_serial_stack),
+                   rthread_down_serial_THREAD_PRIORITY,
                    THREAD_TIMESLICE);
     rt_thread_init(&rthread_busdevice_access,
                    "rthread_busdevice_access",
@@ -108,7 +115,7 @@ int down_usart_init(void)
                    busdevice_access_THREAD_PRIORITY,
                    THREAD_TIMESLICE);
 
-    rt_thread_startup(&rthread_downstream);       //启动串口接收线程
+    rt_thread_startup(&rthread_down_serial);       //启动串口接收线程
     rt_thread_startup(&rthread_busdevice_access); //启动总线设备访问线程
 
     return ret;

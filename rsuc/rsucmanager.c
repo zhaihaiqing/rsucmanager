@@ -70,7 +70,7 @@ void RSUC_msg_pro_entry(void *p) //CPNAME组件消息处理进程
     //硬件初始化
     rsuc_GPIO_init();  //初始化GPIO
     down_usart_init(); //初始化串口
-    timer_sample();    //初始化软件定时器
+    //timer_sample();    //初始化软件定时器
 
     //Init_in_CFG();       //测试，初始化指令表
 
