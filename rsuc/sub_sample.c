@@ -89,6 +89,8 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
     unsigned char err = 0;
     unsigned short eq_timeout = 300; //超时控制，默认为300
 
+    unsigned short  def_wait_time = 3000;
+
     eq_in_index_type eq_in_index = {0}; //索引块
     in_manag_type eq_in_block = {0};    //指令块
 
@@ -112,14 +114,14 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
         }
         else
         {
-            LOG_D("eq_manag.eq[addr - 1].eq_addr:%d",eq_manag.eq[addr - 1].eq_addr);
+            //LOG_D("eq_manag.eq[addr - 1].eq_addr:%d",eq_manag.eq[addr - 1].eq_addr);
             if (eq_manag.eq[addr - 1].eq_addr == 0)
                 err = 0xd1;                          //1：判断该设备是否在节点表中存在
             eq_type = eq_manag.eq[addr - 1].eq_type; //2：根据地址，在节点表中查找对应的设备类型
             eq_par = eq_manag.eq[addr - 1].eq_par;
             eq_gro = eq_manag.eq[addr - 1].eq_group;
 
-            LOG_D("22222222222err:%d",err);
+            //LOG_D("22222222222err:%d",err);
             //eq_type = 2;                     //3：根据设备类型，在指令表中读取该设备的指令
             if (err == 0)
             {
@@ -211,7 +213,8 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
             down_uart_send_dat(&eq_in_block.eq_in[0].in[0], eq_in_block.eq_in[0].in_len); //发送指令
 
             rt_sem_control(&down_frame_sem, RT_IPC_CMD_RESET, RT_NULL); //等待前清零信号量，防止误操作
-            res = rt_sem_take(&down_frame_sem, eq_timeout * 3);
+            //res = rt_sem_take(&down_frame_sem, eq_timeout * 3);
+            res = rt_sem_take(&down_frame_sem, def_wait_time);
             if (res == RT_EOK) //获取成功
             {
                 rx_len = down_rx_device_Len;
@@ -283,10 +286,11 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
 
             if (err == 0)
             {
+                //LOG_D("eq_timeout:%d",eq_timeout);
                 down_uart_send_dat(&eq_in_block.eq_in[1].in[0], eq_in_block.eq_in[1].in_len); //发送采样指令
 
                 rt_sem_control(&down_frame_sem, RT_IPC_CMD_RESET, RT_NULL); //等待前清零信号量，防止误操作
-                res = rt_sem_take(&down_frame_sem, eq_timeout);             //等待信号量
+                res = rt_sem_take(&down_frame_sem, def_wait_time);             //等待信号量
                 if (res == RT_EOK)
                 {
                     rx_len = down_rx_device_Len;
@@ -341,8 +345,10 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
                 }
                 return -1;
             }
+            rt_thread_mdelay(eq_timeout);
         }
 
+        rt_thread_mdelay(5);
         //发送数据获取指令
         eq_in_block.eq_in[2].in[0] = addr;
         crc16 = Modbus_CRC16_Check(&eq_in_block.eq_in[2].in[0], eq_in_block.eq_in[2].in_len - 2);
@@ -362,7 +368,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
             down_uart_send_dat(&eq_in_block.eq_in[2].in[0], eq_in_block.eq_in[2].in_len); //发送数据获取指令
 
             rt_sem_control(&down_frame_sem, RT_IPC_CMD_RESET, RT_NULL); //等待前清零信号量，防止误操作
-            res = rt_sem_take(&down_frame_sem, eq_timeout);
+            res = rt_sem_take(&down_frame_sem, def_wait_time);
 
             if (res == RT_EOK) //获取成功
             {
@@ -372,7 +378,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
                 crc16 = Modbus_CRC16_Check(&rsuc_output_eq_buf[0], rx_len - 2);
 
                 // LOG_D("sprs receive dat:", crc16);
-                // for (i = 0; i < rx_len; i++)
+                // for (i = 0; i < rx_len+2; i++)
                 // {
                 //     rt_kprintf("0x%02x ", rsuc_output_eq_buf[i]);
                 // }
@@ -432,7 +438,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
             down_uart_send_dat(&eq_in_block.eq_in[3].in[0], eq_in_block.eq_in[3].in_len); //发送指令
 
             rt_sem_control(&down_frame_sem, RT_IPC_CMD_RESET, RT_NULL); //等待前清零信号量，防止误操作
-            res = rt_sem_take(&down_frame_sem, eq_timeout);
+            res = rt_sem_take(&down_frame_sem, def_wait_time);
             if (res == RT_EOK) //获取成功
             {
                 rx_len = down_rx_device_Len;
@@ -489,7 +495,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
         down_uart_send_dat(dat, dat_len); //发送透传指令
 
         rt_sem_control(&down_frame_sem, RT_IPC_CMD_RESET, RT_NULL); //等待前清零信号量，防止误操作
-        res = rt_sem_take(&down_frame_sem, 2000);                   //获取信号量   //发送完成后，延时300ms，做超时控制
+        res = rt_sem_take(&down_frame_sem, def_wait_time);                   //获取信号量   //发送完成后，延时300ms，做超时控制
         if (res == RT_EOK)                                          //获取成功
         {
             rx_len = down_rx_device_Len;

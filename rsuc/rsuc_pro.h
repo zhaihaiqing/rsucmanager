@@ -52,6 +52,8 @@ extern sprs_uart_cfg_type  sprs_uart_cfg;
 extern struct rt_semaphore down_rx_sem;    /* 串口接收字节信号量*/
 extern struct rt_semaphore down_frame_sem; /* 串口帧信号量*/
 
+extern struct rt_messagequeue down_serial_rx_mq;
+
 extern uint8_t is_eq_table_presence;
 extern uint8_t is_in_table_presence;
 
