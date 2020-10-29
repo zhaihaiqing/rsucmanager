@@ -27,6 +27,7 @@ enum EQ_CODE
 	EQ_HCF1100=3,
 };
 
+extern unsigned int def_wait_time;
 
 int rsuc_self_test(void);
 int rsuc_sub_sample(uint8_t d_src,uint8_t mq_type,uint8_t addr,uint8_t *dat,uint8_t dat_len);

@@ -40,13 +40,13 @@ int show_eq_manag(void)
         close(fd);
     }
 
-    rt_kprintf("eq_num:%d\r\n", eq_manag2.eq_num);
+    LOG_D("eq_num:%d\r\n", eq_manag2.eq_num);
 
     //for (i = 0; i < RSUC_BUS_MAX_DEVICE; i++)
-    for (i = 0; i < 20; i++)
-    {
-        rt_kprintf("[%d]:addr:%d,type:%d,par:%d,gro:%d\r\n", i, eq_manag2.eq[i].eq_addr, eq_manag2.eq[i].eq_type, eq_manag2.eq[i].eq_par, eq_manag2.eq[i].eq_group);
-    }
+    // for (i = 0; i < 20; i++)
+    // {
+    //     rt_kprintf("[%d]:addr:%d,type:%d,par:%d,gro:%d\r\n", i, eq_manag2.eq[i].eq_addr, eq_manag2.eq[i].eq_type, eq_manag2.eq[i].eq_par, eq_manag2.eq[i].eq_group);
+    // }
 }
 
 /*****************************************************
@@ -71,6 +71,12 @@ int Check_sprs_cfg(void)
         sprs_uart_cfg.stopbits = ini_getl("portcfg", "stopbits", 0, SPRS_CFG_FILENAME);
         sprs_uart_cfg.bufsize = ini_getl("portcfg", "bufsize", 0, SPRS_CFG_FILENAME);
         sprs_uart_cfg.parity = ini_getl("portcfg", "parity", 0, SPRS_CFG_FILENAME);
+
+        def_wait_time = ini_getl("subsamcfg", "waittime", 0, SPRS_CFG_FILENAME);
+
+        if(def_wait_time<10)def_wait_time=10;
+        if(def_wait_time>3000)def_wait_time=3000;
+        
 
         if (!((sprs_uart_cfg.buad == 2400) || (sprs_uart_cfg.buad == 4800) || (sprs_uart_cfg.buad == 9600) || (sprs_uart_cfg.buad == 19200) ||
               (sprs_uart_cfg.buad == 38400) || (sprs_uart_cfg.buad == 57600) || (sprs_uart_cfg.buad == 115200)))
@@ -265,8 +271,8 @@ int Check_in_CFG(void)
  *        5：该地址对应的分组号
  * 
  ****************************************************/
-uint8_t eq_manag_temp1[0] = {0};
-uint8_t eq_manag_temp2[0] = {0};
+uint8_t eq_manag_temp1[4] = {0};
+uint8_t eq_manag_temp2[256] = {0};
 int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8_t par, uint8_t group)
 {
     int fd = 0, res = 0, size = 0;
@@ -279,7 +285,7 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
     //LOG_D("d_src:%d,mq_type:%d,addr:%d,type:%d,par:%d,gro:%d", d_src, mq_type, addr, type, par, group);
 
     rt_memset(eq_manag_temp1, 0, 4);
-    rt_memset(eq_manag_temp2, 0, 4);
+    rt_memset(eq_manag_temp2, 0, 256);
 
     //参数合法性检查
     if (!is_eq_table_presence)
@@ -439,17 +445,26 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
             {
                 if ((addr < 1) || (addr > RSUC_BUS_MAX_DEVICE))
                     err = 0xE2; //地址异常，返回0xf8
-                if (eq_manag.eq[addr - 1].eq_addr == 0)
-                {
-                    //close(fd);
-                    err = 0xE8;
-                }
+                if((type < 1) || (type > 64) || ((addr+type)>247))       //支持的查询数量为1-64
+                    err = 0xE8;//检测要查询的数量
+                
+                // if (eq_manag.eq[addr - 1].eq_addr == 0)
+                // {
+                //     //close(fd);
+                //     err = 0xE8;
+                // }
                 if (err == 0)
                 {
-                    eq_manag_temp2[0] = eq_manag.eq[addr - 1].eq_addr;
-                    eq_manag_temp2[1] = eq_manag.eq[addr - 1].eq_type;
-                    eq_manag_temp2[2] = eq_manag.eq[addr - 1].eq_par;
-                    eq_manag_temp2[3] = eq_manag.eq[addr - 1].eq_group;
+                    uint8_t i=0,offset=0;
+                    offset=addr;
+                    for(i=0;i<type;i++)
+                    {
+                        eq_manag_temp2[i*4]   = eq_manag.eq[offset - 1].eq_addr;
+                        eq_manag_temp2[i*4+1] = eq_manag.eq[offset - 1].eq_type;
+                        eq_manag_temp2[i*4+2] = eq_manag.eq[offset - 1].eq_par;
+                        eq_manag_temp2[i*4+3] = eq_manag.eq[offset - 1].eq_group;
+                        offset++;
+                    }
                 }
                 else
                 {
@@ -473,7 +488,8 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
     rsuc_output_dat.eq_gro = eq_manag_temp1[3];
     rsuc_output_dat.mq_type = mq_type;
     rsuc_output_dat.is_mq_success = err;
-    rsuc_output_dat.d_len = 4;
+    if(mq_type!=4)rsuc_output_dat.d_len = 4;
+    else rsuc_output_dat.d_len = 4*type;
     rsuc_output_dat.dp = &eq_manag_temp2[0];
     //发送数据
     rt_memset(&rsuc_tmp_dmgms, 0, sizeof(DM_GMS_STRU));

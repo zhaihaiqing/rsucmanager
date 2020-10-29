@@ -48,6 +48,7 @@ void RSUC_msg_pro_entry(void *p) //CPNAME组件消息处理进程
     DM_GMS_STRU rsuc_tmp_dmgms; //主管道多维消息,发送数据用
     GMS_STRU rsuc_gms;
     uint8_t i = 0;
+    uint8_t retry_self_test=0;
     static rsuc_inside_dat_type rsuc_input_dat = {0};
 
     rt_thread_mdelay(100);
@@ -97,7 +98,22 @@ void RSUC_msg_pro_entry(void *p) //CPNAME组件消息处理进程
                     uint8_t MAX13430_err;
                     SETE_RES_DATA_STRU res = {"MAX13430", 1};
 
-                    MAX13430_err = rsuc_self_test();
+                    retry_self_test=5;
+
+                    while(retry_self_test--)
+                    {
+                        MAX13430_err = rsuc_self_test();//返回0，成功；；；；返回1，出错误
+                        if(MAX13430_err==0)
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            rt_thread_mdelay(50);
+                        }
+                    }
+
+                    
 
                     if (MAX13430_err)
                     {

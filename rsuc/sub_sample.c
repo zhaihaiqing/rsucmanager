@@ -74,6 +74,7 @@ int rsuc_self_test(void)
  * Output：向业务组件返回接受到的传感器消息/或超时信息
  * 
  * ***********************************************/
+unsigned int def_wait_time=0;//定义发送消息后接受指令的等待时长；
 int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, uint8_t dat_len)
 {
     uint8_t i = 0, rx_len = 0;
@@ -89,7 +90,7 @@ int rsuc_sub_sample(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t *dat, 
     unsigned char err = 0;
     unsigned short eq_timeout = 300; //超时控制，默认为300
 
-    unsigned short  def_wait_time = 3000;
+    //unsigned short  def_wait_time = 3000;
 
     eq_in_index_type eq_in_index = {0}; //索引块
     in_manag_type eq_in_block = {0};    //指令块
