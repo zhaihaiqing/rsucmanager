@@ -445,7 +445,7 @@ int manager_eq(uint8_t d_src, uint8_t mq_type, uint8_t addr, uint8_t type, uint8
             {
                 if ((addr < 1) || (addr > RSUC_BUS_MAX_DEVICE))
                     err = 0xE2; //地址异常，返回0xf8
-                if((type < 1) || (type > 64) || ((addr+type)>247))       //支持的查询数量为1-64
+                if((type < 1) || (type > 64) || ((addr+type)>248))       //支持的查询数量为1-64
                     err = 0xE8;//检测要查询的数量
                 
                 // if (eq_manag.eq[addr - 1].eq_addr == 0)
